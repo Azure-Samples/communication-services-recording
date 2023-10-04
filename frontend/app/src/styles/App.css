@@ -1,0 +1,15 @@
+.main-app {
+    background-color: black;
+    display: flex;
+    color: white;
+    padding: 15px;
+}
+
+.main-app span{
+    color:deepskyblue;
+}
+
+.wrapper{
+   display:flex;
+   flex-direction:column;
+}

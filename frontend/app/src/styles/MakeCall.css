@@ -1,0 +1,28 @@
+﻿.container {
+    width: 350px;
+    display: flex;
+    flex-direction: column;
+}
+
+    .container input {
+        margin-right: 10px;
+    }
+
+.button-group {
+    display: flex;
+    flex-direction: row;
+    margin-top: 5px;
+    padding: 5px 5px;
+}
+
+    .button-group button {
+        margin-right: 5px;
+    }
+
+.btn {
+    padding: 5px 5px;
+}
+
+.txt {
+    padding: 5px 5px;
+}
