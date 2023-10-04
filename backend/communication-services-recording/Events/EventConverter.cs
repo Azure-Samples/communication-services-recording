@@ -9,7 +9,9 @@ namespace communication_services_recording.Events
     */
     public sealed class EventConverter
     {
-        internal const string CallStartedEventName = "CallStarted";
+        internal const string RecordingFileStatusUpdatedEventName = "RecordingFileStatusUpdated";
+        internal const string IncomingCallEventName = "IncomingCall";
+
 
         private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -20,7 +22,8 @@ namespace communication_services_recording.Events
 
             return ParseEventType(eventGridEvent.EventType) switch
             {
-                CallStartedEventName => data.ToObjectFromJson<CallStartedEvent>(JsonOptions),
+                RecordingFileStatusUpdatedEventName => data.ToObjectFromJson<RecordingFileStatusUpdatedEvent>(JsonOptions),
+                IncomingCallEventName => data.ToObjectFromJson<IncomingCallEvent>(JsonOptions),
                 _ => null
             };
         }
