@@ -33,16 +33,18 @@
         {
             try
             {
+                var response = new Dictionary<string, object>();
                 ArgumentNullException.ThrowIfNull(recordingRequest, nameof(recordingRequest));
                 ArgumentException.ThrowIfNullOrEmpty(recordingRequest.ServerCallId);
 
                 /*TODO get the target id from the client*/
-                // string targetId = "8:acs:40b87f1c-e6d1-4772-ba9d-b1360619f38a_0000001b-92b9-2faa-28f4-343a0d00fd74";
+                //string targetId = "8:acs:40b87f1c-e6d1-4772-ba9d-b1360619f38a_0000001b-92b9-2faa-28f4-343a0d00fd74";
 
                 // create call
                 var createCallResult = await this.callRecordingService.CreateCallAsync(targetId);
                 CallConnection callConnection = createCallResult.CallConnection;
                 this.logger.LogInformation($"Call connection Id: {callConnection.CallConnectionId}");
+                response.Add("callStartedAt", DateTime.Now);
 
                 // We can wait for EventProcessor that related to outbound call here. In this case, we are waiting for CreateCallEventResult
                 CreateCallEventResult createCallEventResult = await createCallResult.WaitForEventProcessorAsync();
@@ -50,27 +52,35 @@
                 // Once EventResult comes back, we can get SuccessResult of CreateCall - which is, CallConnected event.
                 CallConnected returnedEvent = createCallEventResult.SuccessResult;
                 this.logger.LogInformation($"Call connection id: {returnedEvent.CallConnectionId}Server call Id: {returnedEvent.ServerCallId}");
+                response.Add("serverCallId", returnedEvent.ServerCallId);
+                response.Add("callConnectedAt", DateTime.Now);
+
 
                 // start recording
                 var recordingResult = await this.callRecordingService.StartRecording(returnedEvent.ServerCallId);
                 this.logger.LogInformation($"Recording started, recording Id : {recordingResult.RecordingId}");
+                response.Add("recordingId", recordingResult.RecordingId);
+                response.Add("recordingStartedAt", DateTime.Now);
 
                 // play audio file
                 var media = callConnection.GetCallMedia();
 
                 /*TODO - Add the audio file path */
-                var playSource = new FileSource(new Uri(""));
+                var playSource = new FileSource(new Uri("https://voiceage.com/wbsamples/in_mono/Chorus.wav"));
                 PlayResult playResult = await media.PlayToAllAsync(playSource);
+                response.Add("audioPlayedAt", DateTime.Now);
 
 
                 // We can wait for EventProcessor that related to outbound call here. In this case, we are waiting for CreateCallEventResult
                 // wait for play to complete
                 PlayEventResult playEventResult = await playResult.WaitForEventProcessorAsync();
+                
                 // check if the play was completed successfully
                 if (playEventResult.IsSuccess)
                 {
                     // success play!
                     PlayCompleted playCompleted = playEventResult.SuccessResult;
+                    response.Add("playCompletedAt", DateTime.Now);
                 }
                 else
                 {
@@ -80,12 +90,17 @@
 
                 // stop recording
                 await this.callRecordingService.StopRecording(recordingResult.RecordingId);
+                response.Add("recordingStoppedAt", DateTime.Now);
+
 
                 // ends the call
+                await callConnection.HangUpAsync(true);
+                response.Add("callEndedAt", DateTime.Now);
+
 
                 // download recording file
 
-                return Ok();
+                return Ok(response);
             }
             catch (Exception ex)
             {
