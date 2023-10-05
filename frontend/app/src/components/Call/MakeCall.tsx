@@ -1,15 +1,22 @@
 ﻿import { useEffect, useState } from "react";
-import { getUserDetails } from "../../utils/UserDetails";
-import { CallClient, DeviceManager } from "@azure/communication-calling";
+import { Call, CallAgent, CallClient, CallEndReason, DeviceManager, IncomingCall } from "@azure/communication-calling";
 import'../../styles/MakeCall.css'
-import { AzureCommunicationTokenCredential, createIdentifierFromRawId } from "@azure/communication-common";
+import { createIdentifierFromRawId } from "@azure/communication-common";
+import { Login } from "../User/Login";
+import { IncomingCallCard } from "./IncomingCall";
+import { CallCard } from "./Call";
 export function MakeCall() {
     const [userId, setUserId] = useState<string>("");
     const [token, setToken] = useState<string>("");
     const [displayUser, setDisplayUser] = useState<string>("");
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [callClient, setCallClient] = useState<CallClient>();
+    const [callAgent, setCallAgent] = useState<CallAgent>();
     const [identityToCall, setIdentityToCall] = useState<string>('');
+    const [incomingCall, setIncomingCall] = useState<IncomingCall>();
+    const [call, setCall] = useState<Call>();
+    const [serverCallId, setServerCallId] = useState<string>('');
+    const [displayCallEndReason, setDisplayCallEndReason] = useState<CallEndReason>();
     let deviceManager: DeviceManager;
 
     useEffect(() => {
@@ -18,10 +25,8 @@ export function MakeCall() {
 
     
     async function placeCall(withVideo: boolean) {
-        debugger;
-        if (token && callClient) {
-            const tokenCredential = new AzureCommunicationTokenCredential(token);
-            const callAgent = await callClient.createCallAgent(tokenCredential, { displayName: displayUser });
+        
+        if (callAgent) {
             let identitiesToCall: any[] = [];
             const userIdsArray = identityToCall.split(',');
 
@@ -39,7 +44,6 @@ export function MakeCall() {
                     }
                 }
             });
-
             const callOptions = await getCallOptions({ video: withVideo, micMuted: false });
             callAgent.startCall(identitiesToCall, callOptions);
         }
@@ -48,25 +52,47 @@ export function MakeCall() {
     function handleInputChange(event: React.ChangeEvent<HTMLInputElement>) {
         setIdentityToCall(event.target.value)
     }
-    async function handleLogin() {
-        getUserDetails()
-            .then((userData) => {
-                setUserId(userData.userId);
-                setToken(userData.token);
-                setIsLoggedIn(true);
-            })
-            .catch((error) => {
-                console.error('Error fetching data:', error);
-            });
+    async function handleLogin(userId: string, token: string, displayName: string, callClient: CallClient, callAgent: CallAgent) {
         
-        let client = new CallClient();
-        debugger;
-        setCallClient(client);
-        setDisplayUser("acsUser")
+        setUserId(userId);
+        setToken(token);
+        setDisplayUser(displayName);
+        setCallClient(callClient);
+        setCallAgent(callAgent);
+        setIsLoggedIn(true);
+
+        callAgent.on('callsUpdated', e => {
+            console.log(`callsUpdated, added=${e.added}, removed=${e.removed}`);
+
+            e.added.forEach(call => {
+                
+                setCall(call);
+                setServerCallId(call.id);
+                console.log("SERVER CALL ID " + call.id);
+            });
+            e.removed.forEach(call => {
+                if (call) {
+                }
+            });
+        });
+
+        callAgent.on('incomingCall', args => {
+            const incomingCall = args.incomingCall;
+            setIncomingCall(incomingCall);
+            if (call) {
+                incomingCall.reject();
+                return;
+            }
+
+            incomingCall.on('callEnded', args => {
+                setDisplayCallEndReason(args.callEndReason);
+            });
+
+        });
     }
 
     async function getCallOptions(options: { video: boolean; micMuted: boolean }) {
-        debugger;
+        
         if (callClient !== undefined) {
             deviceManager = await callClient.getDeviceManager();
         }
@@ -155,18 +181,30 @@ export function MakeCall() {
 
     return (
         <div>
-            {!isLoggedIn && <button onClick={handleLogin}>Login Acs user</button>}
-            {isLoggedIn && <p>The Identity you've provisioned is: {userId}</p>}
-            <div>
+            <h3>User Identity Provisioning and Calling SDK Initialization</h3>
+            {!isLoggedIn && <Login onLoggedIn={handleLogin} />}
+            {
+                isLoggedIn &&
+                <div>
+                    <br></br>
+                        <div className="login-info">Congrats! You've provisioned an ACS user identity and initialized the ACS Calling Client Web SDK. You are ready to start making calls!</div>
+                        <div className="login-info">The Identity you've provisioned is: <span className="identity">{userId}</span></div>
+                </div>  
+            }
+            <hr></hr>
+            <div>{!incomingCall && !call &&
                 <div className="container">
-                    <p>Place a call</p>
-                    <p >Enter an identity to make a call to.</p>
-                    <input className="txt" disabled value={identityToCall} onChange={handleInputChange }  />
+                    <p className="info">Place a call</p>
+                    <p className="text-info">Enter an identity to make a call to.</p>
+                    <input className="txt" disabled={!isLoggedIn} value={identityToCall} onChange={handleInputChange} />
                     <div className="button-group">
-                        <button className="btn" disabled onClick={() => placeCall(false)}>Place call</button>
-                        <button className="btn" disabled onClick={() => placeCall(true)}>Place call with video</button>
+                        <button className="btn" disabled={!isLoggedIn} onClick={() => placeCall(false)}>Place call</button>
+                        {/*<button className="btn" disabled onClick={() => placeCall(true)}>Place call with video</button>*/}
                     </div>
                 </div>
+            }
+                {call && <CallCard call={call} />}
+                {incomingCall && !call && <IncomingCallCard incomingCall={incomingCall} onReject={() => { setIncomingCall(undefined) }} />}
             </div>
         </div>
     )

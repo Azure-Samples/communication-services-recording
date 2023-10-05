@@ -13,6 +13,7 @@
     flex-direction: row;
     margin-top: 5px;
     padding: 5px 5px;
+    margin-left: -5px;
 }
 
     .button-group button {
@@ -20,9 +21,45 @@
     }
 
 .btn {
-    padding: 5px 5px;
+    border: 1px solid gray;
+    padding: 10px 20px;
+    border-radius: 2px;
+    font-weight: 500;
+    color: white;
+    background-color: black;
 }
 
+    .btn:hover {
+        border: 1px solid dodgerblue;
+        color: dodgerblue;
+    }
+
+
 .txt {
-    padding: 5px 5px;
+    padding: 10px 5px;
+    color: white;
+    background-color: black;
+    border: 1px solid gray;
+    border-radius: 2px;
+}
+
+    .txt:hover {
+        border: 1px solid dodgerblue;
+    }
+
+.identity{
+    color:dodgerblue
+}
+.info {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: -5px;
+}
+.text-info {
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+.login-info {
+    font-weight: 600;
+    font-size: 14px;
 }
