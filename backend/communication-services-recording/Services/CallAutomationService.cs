@@ -46,5 +46,19 @@ namespace communication_services_recording.Services
                 throw;
             }
         }
+
+        public async Task PlayAudio(string callConnectionId)
+        {
+            var callConnection = callAutomationClient.GetCallConnection(callConnectionId);
+            var callMedia = callConnection.GetCallMedia();
+            await callMedia.PlayToAllAsync(new FileSource(new Uri("" + "/audio/Goodbye.wav")));
+        }
+
+        public async Task EndCall(string callConnectionId, string recordingId)
+        {
+            var callConnection = callAutomationClient.GetCallConnection(callConnectionId);
+            callAutomationClient.GetCallRecording().Stop(recordingId);
+            await callConnection.HangUpAsync(true);
+        }
     }
 }

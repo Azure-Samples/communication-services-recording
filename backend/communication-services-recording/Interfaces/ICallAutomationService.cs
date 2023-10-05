@@ -3,5 +3,9 @@
     public interface ICallAutomationService
     {
         Task<CreateCallResult> CreateCall(string callerId, string targetId);
+
+        Task PlayAudio(string callConnectionId);
+
+        Task EndCall(string callConnectionid, string recordingId);
     }
 }

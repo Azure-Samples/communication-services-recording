@@ -9,5 +9,6 @@ namespace communication_services_recording.Interfaces
         Task StopRecording(string recordingId);
         Task PauseRecording(string recordingId);
         Task ResumeRecording(string recordingId);
+        Task DownloadRecording(string recordingId);
     }
 }

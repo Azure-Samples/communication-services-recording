@@ -35,19 +35,25 @@ namespace communication_services_recording.Services
             return startRecordingResponse;
         }
 
-        public Task StopRecording(string recordingId)
+        public async Task StopRecording(string recordingId)
         {
-            throw new NotImplementedException();
+            await this.callAutomationClient.GetCallRecording().StopAsync(recordingId);
         }
 
-        public Task PauseRecording(string recordingId)
+        public async Task PauseRecording(string recordingId)
         {
-            throw new NotImplementedException();
+            var pauseRecording = await callAutomationClient.GetCallRecording().PauseAsync(recordingId);
         }
 
-        public Task ResumeRecording(string recordingId)
+        public async Task ResumeRecording(string recordingId)
         {
-            throw new NotImplementedException();
+            var resumeRecording = await callAutomationClient.GetCallRecording().ResumeAsync(recordingId);
+        }
+
+        public async Task DownloadRecording(string recordingId)
+        {
+            var recordingDownloadUri = new Uri("contentLocation"); // Get contentLocation attribute of the recordingChunk
+            var response = await callAutomationClient.GetCallRecording().DownloadToAsync(recordingDownloadUri, "fileName");
         }
     }
 }
