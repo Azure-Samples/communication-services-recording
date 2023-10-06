@@ -35,60 +35,71 @@ namespace communication_services_recording.Services
             }
         }
 
-        public async Task<RecordingStateResult> StartRecording(string serverCallId)
-        {
-            try
-            {
-                StartRecordingOptions recordingOptions = new StartRecordingOptions(new ServerCallLocator(serverCallId));
-                recordingOptions.RecordingChannel = RecordingChannel.Unmixed;
-                recordingOptions.RecordingContent = RecordingContent.Audio;
-                recordingOptions.RecordingFormat = RecordingFormat.Wav;
-                var startRecordingResponse = await this.callAutomationClient.GetCallRecording()
-                    .StartAsync(recordingOptions).ConfigureAwait(false);
-                return startRecordingResponse;
-            }
-            catch (Exception ex)
-            {
-                this.logger.LogError(ex, $"Couldnt start the recording");
-                throw;
-            }
-        }
-
         public async Task<RecordingStateResult> StartRecording(RecordingRequest recordingRequest)
         {
             try
             {
                 StartRecordingOptions recordingOptions = new StartRecordingOptions(new ServerCallLocator(recordingRequest.ServerCallId));
-                
-                /*TODO validate recording channel, content and format if its invalid assign the default*/
-                
-                recordingOptions.RecordingChannel = recordingRequest.RecordingChannel;
-                recordingOptions.RecordingContent = recordingRequest.RecordingContent;
-                recordingOptions.RecordingFormat = recordingRequest.RecordingFormat;
+                recordingOptions.RecordingChannel = !string.IsNullOrWhiteSpace(recordingRequest.RecordingChannel) ?
+                    new RecordingChannel(recordingRequest.RecordingChannel) :
+                    RecordingChannel.Unmixed;
+
+                recordingOptions.RecordingContent = !string.IsNullOrWhiteSpace(recordingRequest.RecordingContent) ?
+                    new RecordingContent(recordingRequest.RecordingContent) :
+                    RecordingContent.Audio;
+
+                recordingOptions.RecordingFormat = !string.IsNullOrWhiteSpace(recordingRequest.RecordingFormat) ?
+                    new RecordingFormat(recordingRequest.RecordingFormat) :
+                    RecordingFormat.Wav;
+
                 var startRecordingResponse = await this.callAutomationClient.GetCallRecording()
                     .StartAsync(recordingOptions).ConfigureAwait(false);
                 return startRecordingResponse;
             }
             catch (Exception ex)
             {
-                this.logger.LogError(ex, $"Couldnt start the recording");
+                this.logger.LogError(ex, $"Error occured during the start recording");
                 throw;
             }
         }
 
         public async Task StopRecording(string recordingId)
         {
-            await this.callAutomationClient.GetCallRecording().StopAsync(recordingId);
+            try
+            {
+                await this.callAutomationClient.GetCallRecording().StopAsync(recordingId);
+            }
+            catch (Exception ex)
+            {
+                this.logger.LogError(ex, $"Error occured during the stop recording");
+                throw;
+            }
         }
 
-        public Task PauseRecording(string recordingId)
+        public async Task PauseRecording(string recordingId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                await this.callAutomationClient.GetCallRecording().PauseAsync(recordingId);
+            }
+            catch (Exception ex)
+            {
+                this.logger.LogError(ex, $"Error occured during the stop recording");
+                throw;
+            }
         }
 
-        public Task ResumeRecording(string recordingId)
+        public async Task ResumeRecording(string recordingId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                await this.callAutomationClient.GetCallRecording().ResumeAsync(recordingId);
+            }
+            catch (Exception ex)
+            {
+                this.logger.LogError(ex, $"Error occured during the stop recording");
+                throw;
+            }
         }
     }
 }
