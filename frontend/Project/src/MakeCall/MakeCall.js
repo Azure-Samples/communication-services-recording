@@ -12,6 +12,7 @@ import IncomingCallCard from './IncomingCallCard';
 import CallCard from '../MakeCall/CallCard';
 import Login from './Login';
 import MediaConstraint from './MediaConstraint';
+import RecordConstraint from './RecordConstraint';
 import { setLogLevel, AzureLogger } from '@azure/logger';
 import { inflate } from 'pako';
 export default class MakeCall extends React.Component {
@@ -27,6 +28,7 @@ export default class MakeCall extends React.Component {
         this.logBuffer = [];
         this.videoConstraints = null;
         this.tokenCredential = null;
+        this.recordConstraints = null;
         this.logInComponentRef = React.createRef();
 
         this.state = {
@@ -48,7 +50,9 @@ export default class MakeCall extends React.Component {
                 video: null
             },
             preCallDiagnosticsResults: {},
-            identityMri: undefined
+            identityMri: undefined,
+            recordCallConstraint: null,
+            isRecord: true
         };
 
         setInterval(() => {
@@ -63,6 +67,18 @@ export default class MakeCall extends React.Component {
             this.videoConstraints = constraints.video;
         }
     }
+
+    handleRecordConstraint = (constraints) => {
+        if (constraints) {
+            this.setState({recordCallConstraint : constraints})
+        }
+    }
+
+    handleCheckboxChange = () => {
+        this.setState((prevState) => ({
+            isRecord: !prevState.isRecord,
+        }));
+    };
 
     handleLogIn = async (userDetails) => {
         if (userDetails) {
@@ -357,6 +373,10 @@ export default class MakeCall extends React.Component {
                         {
                             !this.state.incomingCall && !this.state.call &&
                             <div>
+                                    <div>
+                                        <h2>Record</h2> <input type="checkbox" checked ={this.state.isRecord} onChange={this.handleCheckboxChange} />
+                                    </div>
+                                
                                 <div className="ms-Grid-row mt-3">
                                     <div className="call-input-panel mb-5 ms-Grid-col ms-sm12 ms-md12 ms-lg12 ms-xl6 ms-xxl3">
                                         <div className="ms-Grid-row">
@@ -387,7 +407,7 @@ export default class MakeCall extends React.Component {
                                             disabled={this.state.call || !this.state.loggedIn}
                                             onClick={() => this.placeCall(true)}>
                                         </PrimaryButton>
-                                    </div>
+                                        </div>
                                     <div className="ms-Grid-col ms-sm12 ms-md12 ms-lg12 ms-xl1 ms-xxl1">
                                     </div>
                                    
@@ -432,7 +452,17 @@ export default class MakeCall extends React.Component {
                                             disabled={this.state.call || !this.state.loggedIn}
                                         />
                                     </div>
-                                </div>
+                                    </div>
+
+                                    <div className="ms-Grid-row mt-3">
+                                        <div className="call-input-panel mb-5 ms-Grid-col ms-sm12 ms-lg12 ms-xl12 ms-xxl4">
+                                            <h3 className="mb-1">Record Constraints</h3>
+                                            <RecordConstraint
+                                                onChange={this.handleRecordConstraint}
+                                                disabled={this.state.call || !this.state.loggedIn}
+                                            />
+                                        </div>
+                                    </div>
                             </div>
 
                         }
@@ -454,7 +484,10 @@ export default class MakeCall extends React.Component {
                                 identityMri={this.state.identityMri}
                                 onShowCameraNotFoundWarning={(show) => { this.setState({ showCameraNotFoundWarning: show }) }}
                                 onShowSpeakerNotFoundWarning={(show) => { this.setState({ showSpeakerNotFoundWarning: show }) }}
-                                onShowMicrophoneNotFoundWarning={(show) => { this.setState({ showMicrophoneNotFoundWarning: show }) }} />
+                                onShowMicrophoneNotFoundWarning={(show) => { this.setState({ showMicrophoneNotFoundWarning: show }) }}
+                                recordCallConstraint={this.state.recordCallConstraint}
+                                isRecord={this.state.isRecord}
+                            />
                         }
                         {
                             this.state.incomingCall && !this.state.call &&

@@ -20,6 +20,8 @@ import DataChannelCard from './DataChannelCard';
 import CallCaption from "./CallCaption";
 import { ParticipantMenuOptions } from './ParticipantMenuOptions';
 import MediaConstraint from './MediaConstraint';
+import RecordConstraint from './RecordConstraint';
+import { recordingService } from "../Utils/RecordingService";
 
 export default class CallCard extends React.Component {
     constructor(props) {
@@ -40,6 +42,8 @@ export default class CallCard extends React.Component {
         this.raiseHandFeature = this.call.feature(Features.RaiseHand);
         this.capabilitiesFeature = this.call.feature(Features.Capabilities);
         this.dominantSpeakersFeature = this.call.feature(Features.DominantSpeakers);
+        this.recordCallConstraints = props.recordCallConstraint;
+        this.isRecordCall = props.isRecord;
         if (Features.Reaction) {
             this.meetingReaction = this.call.feature(Features.Reaction);
         }
@@ -181,7 +185,7 @@ export default class CallCard extends React.Component {
                 this.setState({ selectedMicrophoneDeviceId: this.deviceManager.selectedMicrophone?.id });
             });
 
-            const callStateChanged = () => {
+            const callStateChanged = async () => {
                 console.log('Call state changed ', this.call.state);
                 if (this.call.state !== 'None' &&
                     this.call.state !== 'Connecting' &&
@@ -191,6 +195,11 @@ export default class CallCard extends React.Component {
                     }
                 }
                 if (this.call.state === 'Connected') {
+                    const serverCallId = this.call.id;
+                    const recordingContent = this.recordCallConstraints !== null ? this.recordCallConstraints.recordingContent : "audio";
+                    const recordingChannel = this.recordCallConstraints !== null ? this.recordCallConstraints.recordingChannel : "unmixed";
+                    const recordingFormat = this.recordCallConstraints !== null ? this.recordCallConstraints.recordingFormat : "wav";
+                    const res = await recordingService.recordCall(serverCallId, recordingContent, recordingChannel, recordingFormat, this.isRecordCall);
                     
                 }
                 if (this.call.state === 'Incoming') {
