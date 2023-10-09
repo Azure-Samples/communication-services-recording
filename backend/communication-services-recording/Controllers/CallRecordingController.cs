@@ -29,7 +29,7 @@
 
         [HttpPost]
         [Route("record")]
-        public async Task<IActionResult> Record(RecordingRequest recordingRequest, string targetId)
+        public async Task<IActionResult> Record(RecordingRequest recordingRequest)
         {
             try
             {
@@ -37,7 +37,7 @@
                 ArgumentException.ThrowIfNullOrEmpty(recordingRequest.ServerCallId);
 
                 /*TODO get the target id from the client*/
-                // string targetId = "8:acs:40b87f1c-e6d1-4772-ba9d-b1360619f38a_0000001b-92b9-2faa-28f4-343a0d00fd74";
+                string targetId = "8:acs:40b87f1c-e6d1-4772-ba9d-b1360619f38a_0000001b-92b9-2faa-28f4-343a0d00fd74";
 
                 // create call
                 var createCallResult = await this.callRecordingService.CreateCallAsync(targetId);
