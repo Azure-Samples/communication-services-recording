@@ -7,5 +7,7 @@
         public string RecordingChannel { get; set; }
 
         public string RecordingFormat { get; set; }
+
+        public bool IsRecord { get; set; }
     }
 }
