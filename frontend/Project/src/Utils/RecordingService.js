@@ -1,14 +1,5 @@
-
 export const recordingService = {
-    recordCall: async (serverCallId, recordingContent, recordingChannel, recordingFormat, isRecordCall) => {
-        const recordRequest = {
-            serverCallId: serverCallId,
-            recordingContent: recordingContent,
-            recordingChannel: recordingChannel,
-            recordingFormat: recordingFormat,
-            isRecord: isRecordCall
-        };
-
+    recordCall: async (recordRequest) => {
         fetch('https://localhost:7108/api/recording/record', {
             method: 'POST',
             headers: {

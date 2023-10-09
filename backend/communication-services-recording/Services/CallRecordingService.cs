@@ -53,7 +53,7 @@ namespace communication_services_recording.Services
                     RecordingFormat.Wav;
 
                 var startRecordingResponse = await this.callAutomationClient.GetCallRecording()
-                    .StartAsync(recordingOptions).ConfigureAwait(false);
+                    .StartAsync(recordingOptions);
                 return startRecordingResponse;
             }
             catch (Exception ex)
@@ -63,11 +63,11 @@ namespace communication_services_recording.Services
             }
         }
 
-        public async Task StopRecording(string recordingId)
+        public async Task<Response> StopRecording(string recordingId)
         {
             try
             {
-                await this.callAutomationClient.GetCallRecording().StopAsync(recordingId);
+               return await this.callAutomationClient.GetCallRecording().StopAsync(recordingId);
             }
             catch (Exception ex)
             {

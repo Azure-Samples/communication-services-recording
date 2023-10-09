@@ -207,7 +207,15 @@ export default class CallCard extends React.Component {
                         const recordingFormat = this.recordCallConstraints !== null ? this.recordCallConstraints.recordingFormat : "wav";
                         if (this.isRecordCall) {
                             this.setState({ isRecordingActive: true });
-                            const res = recordingService.recordCall(serverCallId, recordingContent, recordingChannel, recordingFormat, this.isRecordCall);
+                            const recordRequest = {
+                                serverCallId: serverCallId,
+                                callConnectionId: this.state.callId,
+                                recordingContent: recordingContent,
+                                recordingChannel: recordingChannel,
+                                recordingFormat: recordingFormat
+                            };
+                            const res = recordingService.recordCall(recordRequest);
+                            console.log(res);
                         }
 
                     }).catch(err => {

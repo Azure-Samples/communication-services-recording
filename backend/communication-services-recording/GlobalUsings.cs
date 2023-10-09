@@ -1,4 +1,5 @@
-﻿global using Azure.Communication;
+﻿global using Azure;
+global using Azure.Communication;
 global using Azure.Communication.CallAutomation;
 global using Azure.Messaging.EventGrid;
 global using Azure.Messaging.EventGrid.SystemEvents;

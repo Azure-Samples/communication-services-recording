@@ -1,30 +1,25 @@
-﻿namespace communication_services_recording.Controllers
+﻿using communication_services_recording.Models;
+using System.Diagnostics;
+
+namespace communication_services_recording.Controllers
 {
     [Route("api/recording")]
     [ApiController]
     public class CallRecordingController : ControllerBase
     {
         private readonly ICallRecordingService callRecordingService;
+        private readonly CallAutomationClient callAutomationClient;
+        private static string recordingId = "";
         private readonly ILogger logger;
 
         public CallRecordingController(
             ICallRecordingService callRecordingService,
+            CallAutomationClient callAutomationClient,
             ILogger<CallRecordingController> logger)
         {
             this.callRecordingService = callRecordingService;
+            this.callAutomationClient = callAutomationClient;
             this.logger = logger;
-        }
-
-        [HttpPost]
-        [Route("createCall")]
-        public async Task<IActionResult> PlaceCall(string targetId)
-        {
-            // targetId = "8:acs:40b87f1c-e6d1-4772-ba9d-b1360619f38a_0000001b-92b9-2faa-28f4-343a0d00fd74";
-
-            // create call
-            var callResult = await this.callRecordingService.CreateCallAsync(targetId);
-            var callConnectionId = callResult.CallConnection.CallConnectionId;
-            return Ok();
         }
 
         [HttpPost]
@@ -33,69 +28,75 @@
         {
             try
             {
+
                 ArgumentNullException.ThrowIfNull(recordingRequest, nameof(recordingRequest));
                 ArgumentException.ThrowIfNullOrEmpty(recordingRequest.ServerCallId);
 
-                /*TODO get the target id from the client*/
-                string targetId = "8:acs:40b87f1c-e6d1-4772-ba9d-b1360619f38a_0000001b-92b9-2faa-28f4-343a0d00fd74";
-
-                // create call
-                var createCallResult = await this.callRecordingService.CreateCallAsync(targetId);
-                CallConnection callConnection = createCallResult.CallConnection;
-                this.logger.LogInformation($"Call connection Id: {callConnection.CallConnectionId}");
-
-                // We can wait for EventProcessor that related to outbound call here. In this case, we are waiting for CreateCallEventResult
-                CreateCallEventResult createCallEventResult = await createCallResult.WaitForEventProcessorAsync();
-
-                // Once EventResult comes back, we can get SuccessResult of CreateCall - which is, CallConnected event.
-                CallConnected returnedEvent = createCallEventResult.SuccessResult;
-                this.logger.LogInformation($"Call connection id: {returnedEvent.CallConnectionId}Server call Id: {returnedEvent.ServerCallId}");
-                
-                /* TODO remove once we get the request from UI*/
-                recordingRequest = new RecordingRequest();
-                recordingRequest.ServerCallId = returnedEvent.ServerCallId;
+                var recordingRespone = new RecordingResponse();
+                recordingRespone.ServerCallId = recordingRequest.ServerCallId;
+                recordingRespone.CallConnectionId = recordingRequest.CallConnectionId;
 
                 // start recording
+                var recordingEvent = new Event();
+                recordingEvent.Name = "StartRecording";
+                recordingEvent.StartTime = DateTime.UtcNow.ToString();
+                if(!string.IsNullOrWhiteSpace(recordingId))
+                {
+                    return Ok("recording already in progress");
+                }
+
                 var recordingResult = await this.callRecordingService.StartRecording(recordingRequest);
+                recordingId   = recordingResult.RecordingId;
+                recordingRespone.RecordingId = recordingResult.RecordingId;
+                recordingEvent.EndTime = DateTime.UtcNow.ToString();
+                recordingEvent.Response = JsonSerializer.Serialize(recordingResult);
+                recordingRespone.Events = new List<Event> { recordingEvent };
+
                 this.logger.LogInformation($"Recording started, recording Id : {recordingResult.RecordingId}");
+                this.logger.LogInformation($"Recording state {recordingResult.RecordingState}");
 
                 // play audio file
+                var callConnection = this.callAutomationClient.GetCallConnection(recordingRequest.CallConnectionId);
                 var media = callConnection.GetCallMedia();
-
-                /*TODO - Add the audio file path */
                 var playSource = new FileSource(new Uri("https://voiceage.com/wbsamples/in_mono/Chorus.wav"));
+
+                var playEvent = new Event();
+                playEvent.Name = "PlayToAll";
+                playEvent.StartTime = DateTime.UtcNow.ToString();
                 PlayResult playResult = await media.PlayToAllAsync(playSource);
 
-
-                // We can wait for EventProcessor that related to outbound call here. In this case, we are waiting for CreateCallEventResult
+                // We can wait for EventProcessor that related to outbound call here. In this case, we are waiting for PlayToAllAsync
                 // wait for play to complete
                 PlayEventResult playEventResult = await playResult.WaitForEventProcessorAsync();
+                playEvent.EndTime = DateTime.UtcNow.ToString();
+                playEvent.Response = JsonSerializer.Serialize(playEventResult);
                 this.logger.LogInformation($"Play completed successful: {playEventResult.IsSuccess}");
-
-                // check if the play was completed successfully
-                if (playEventResult.IsSuccess)
-                {
-                    // success play!
-                    PlayCompleted playCompleted = playEventResult.SuccessResult;
-                }
-                else
-                {
-                    // failed to play the audio.
-                    PlayFailed playFailed = playEventResult.FailureResult;
-                }
+                recordingRespone.Events.Add(playEvent);
 
                 // stop recording
-                await this.callRecordingService.StopRecording(recordingResult.RecordingId);
+                var recordingStopEvent = new Event();
+                recordingStopEvent.Name = "StopRecording";
+                recordingStopEvent.StartTime = DateTime.UtcNow.ToString();
+                var response = await this.callRecordingService.StopRecording(recordingResult.RecordingId);
+                recordingStopEvent.EndTime = DateTime.UtcNow.ToString();
+                recordingStopEvent.Response = JsonSerializer.Serialize(response);
+                recordingRespone.Events.Add(recordingStopEvent);
+
 
                 // ends the call
-                await callConnection.HangUpAsync(true);
+                var hangUpCallEvent = new Event();
+                hangUpCallEvent.Name = "HangUp";
+                hangUpCallEvent.StartTime = DateTime.UtcNow.ToString();
+                var endCallResponse = await callConnection.HangUpAsync(true);
+                hangUpCallEvent.EndTime = DateTime.UtcNow.ToString();
+                hangUpCallEvent.Response = JsonSerializer.Serialize(response);
+                recordingRespone.Events.Add(hangUpCallEvent);
 
-                // download recording file
-
-                return Ok();
+                return Ok(recordingRespone);
             }
             catch (Exception ex)
             {
+
                 throw;
             }
         }
