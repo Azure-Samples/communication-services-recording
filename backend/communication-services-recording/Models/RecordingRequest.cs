@@ -3,6 +3,7 @@
     public class RecordingRequest
     {
         public string ServerCallId { get; set; }
+        public string CallConnectionId { get; set; }
         public string RecordingContent { get; set; }
         public string RecordingChannel { get; set; }
 
