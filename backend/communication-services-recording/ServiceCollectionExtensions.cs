@@ -15,6 +15,7 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddSingleton<ICallRecordingService, CallRecordingService>();
+        services.AddSingleton<IACSEndPointTestService, ACSEndPointTestService>();
         return services;
     }
 
