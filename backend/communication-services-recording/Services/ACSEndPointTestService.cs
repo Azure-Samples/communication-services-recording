@@ -1,4 +1,6 @@
 ﻿using Newtonsoft.Json;
+using System.Dynamic;
+using System;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -17,11 +19,13 @@ namespace communication_services_recording.Services
             this.logger = logger;
         }
 
-        public async Task<HttpResponseMessage> TestAcsCreateCallApi(string apiVersion = "")
+        public async Task<HttpResponseMessage> TestAcsCreateCallApi(string userIdentity, string apiVersion = "")
         {
-            string resourceEndpoint = configuration["BaseUrl"];//"https://acsrecording.unitedstates.communication.azure.com";
-            // Create a uri you are going to call.
-            var requestUri = new Uri($"{resourceEndpoint}calling/callConnections?api-version={apiVersion}");
+            string resourceEndpoint = configuration["BaseUrl"];
+
+            string callconnectRequestUri = $"{resourceEndpoint}calling/callConnections?api-version={apiVersion}";
+
+            var requestUri = new Uri($"{callconnectRequestUri}");
 
             var body = new
             {
@@ -32,11 +36,11 @@ namespace communication_services_recording.Services
                         kind = "communicationUser",
                         communicationUser = new
                         {
-                            id = configuration["AcsUserIdentity"]//"8:acs:40b87f1c-e6d1-4772-ba9d-b1360619f38a_0000001b-b2af-003a-0e04-343a0d0057de"
+                            id = userIdentity
                         }
                     }
                 },
-                callbackUri = configuration["CallbackUri"]//"https://4cng02xp-7108.inc1.devtunnels.ms/api/events"
+                callbackUri = configuration["CallbackUri"]
             };
 
             var serializedBody = JsonConvert.SerializeObject(body);
@@ -46,30 +50,117 @@ namespace communication_services_recording.Services
                 Content = new StringContent(serializedBody, Encoding.UTF8, "application/json")
             };
 
+            return await PerformRequestHandling(callconnectRequestUri, requestMessage, serializedBody);
+        }
 
+        public async Task<HttpResponseMessage> TestAcsStartRecordingApi(string serverCallId, string apiVersion = "")
+        {
+            string resourceEndpoint = configuration["BaseUrl"];
+            //POST {endpoint}/calling/recordings?api-version=2023-06-15-preview
+            string callconnectRequestUri = $"{resourceEndpoint}calling/recordings?api-version={apiVersion}";
+            var requestUri = new Uri($"{callconnectRequestUri}");
+
+            var body = new
+            {
+                recordingStateCallbackUri = configuration["CallbackUri"],
+                recordingContentType = (object)null,
+                recordingChannelType = (object)null,
+                recordingFormatType = (object)null,
+                callLocator = new
+                {
+                    serverCallId = serverCallId,
+                    kind = "serverCallLocator"
+                }
+            };
+
+            var serializedBody = JsonConvert.SerializeObject(body);
+
+            var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
+            {
+                Content = new StringContent(serializedBody, Encoding.UTF8, "application/json")
+            };
+            return await PerformRequestHandling(callconnectRequestUri, requestMessage, serializedBody);
+        }
+        public async Task<HttpResponseMessage> TestAcsGetRecordingPropertiesApi(string apiVersion = "", string recordingId = "")
+        {
+            string resourceEndpoint = configuration["BaseUrl"];
+            string callconnectRequestUri = $"{resourceEndpoint}calling/recordings/{recordingId}?api-version={apiVersion}";
+            var requestUri = new Uri($"{callconnectRequestUri}");
+            //var body = "";
+            var serializedBody = "";
+            var requestMessage = new HttpRequestMessage(HttpMethod.Get, requestUri)
+            {
+                Content = new StringContent(serializedBody, Encoding.UTF8, "application/json")
+            };
+            return await PerformRequestHandling(callconnectRequestUri, requestMessage, serializedBody);
+        }
+
+
+        public async Task<HttpResponseMessage> TestAcsStopRecordingApi(string apiVersion = "", string recordingId = "")
+        {
+            string resourceEndpoint = configuration["BaseUrl"];
+            string callconnectRequestUri = $"{resourceEndpoint}calling/recordings/{recordingId}?api-version={apiVersion}";
+            var requestUri = new Uri($"{callconnectRequestUri}");
+            //var body = "";
+            var serializedBody = "";
+            var requestMessage = new HttpRequestMessage(HttpMethod.Delete, requestUri)
+            {
+                Content = new StringContent(serializedBody, Encoding.UTF8, "application/json")
+            };
+            return await PerformRequestHandling(callconnectRequestUri, requestMessage, serializedBody);
+        }
+
+        public async Task<HttpResponseMessage> TestAcsPauseRecordingApi(string apiVersion = "", string recordingId = "")
+        {
+            string resourceEndpoint = configuration["BaseUrl"];
+            string callconnectRequestUri = $"{resourceEndpoint}calling/recordings/{recordingId}:pause?api-version={apiVersion}";
+            var requestUri = new Uri($"{callconnectRequestUri}");
+            //var body = "";
+            var serializedBody = "";
+            var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
+            {
+                Content = new StringContent(serializedBody, Encoding.UTF8, "application/json")
+            };
+            return await PerformRequestHandling(callconnectRequestUri, requestMessage, serializedBody);
+        }
+
+        public async Task<HttpResponseMessage> TestAcsResumeRecordingApi(string apiVersion = "", string recordingId = "")
+        {
+            string resourceEndpoint = configuration["BaseUrl"];
+            string callconnectRequestUri = $"{resourceEndpoint}calling/recordings/{recordingId}:resume?api-version={apiVersion}";
+            var requestUri = new Uri($"{callconnectRequestUri}");
+            //var body = "";
+            var serializedBody = "";
+            var requestMessage = new HttpRequestMessage(HttpMethod.Post, requestUri)
+            {
+                Content = new StringContent(serializedBody, Encoding.UTF8, "application/json")
+            };
+            return await PerformRequestHandling(callconnectRequestUri, requestMessage, serializedBody);
+        }
+
+        private async Task<HttpResponseMessage> PerformRequestHandling(string reqUri, HttpRequestMessage requestMessage, string serializedBody)
+        {
+            //string resourceEndpoint = configuration["BaseUrl"];
+            var requestUri = new Uri($"{reqUri}");
             // Specify the 'x-ms-date' header as the current UTC timestamp according to the RFC1123 standard
             var date = DateTimeOffset.UtcNow.ToString("r", CultureInfo.InvariantCulture);
             // Get the host name corresponding with the 'host' header.
             var host = requestUri.Authority;
             // Compute a content hash for the 'x-ms-content-sha256' header.
             var contentHash = ComputeContentHash(serializedBody);
-
-            // Prepare a string to sign.
+            // Prepare a string to sign. -> //$"POST\n{requestUri.PathAndQuery}\n{date};{host};{contentHash}";
             var stringToSign = $"POST\n{requestUri.PathAndQuery}\n{date};{host};{contentHash}";
+            //$"POST\n{requestUri.PathAndQuery}\n{date};{host};{contentHash}";
             // Compute the signature.
             var signature = ComputeSignature(stringToSign);
             // Concatenate the string, which will be used in the authorization header.
             var authorizationHeader = $"HMAC-SHA256 SignedHeaders=x-ms-date;host;x-ms-content-sha256&Signature={signature}";
-
             // Add a date header.
             requestMessage.Headers.Add("x-ms-date", date);
-
             // Add a content hash header.
             requestMessage.Headers.Add("x-ms-content-sha256", contentHash);
-
             // Add an authorization header.
             requestMessage.Headers.Add("Authorization", authorizationHeader);
-
             string _resp = "";
             HttpResponseMessage response = new HttpResponseMessage();
             try
@@ -84,19 +175,17 @@ namespace communication_services_recording.Services
                 Console.WriteLine(_resp);
             }
             catch (Exception ex)
-            {               
-                this.logger.LogError(ex, $"Error in Authorization!");
+            {
+                this.logger.LogError(ex, $"Error in request handling!");
             }
             return response;
         }
-
         private string ComputeContentHash(string content)
         {
             using var sha256 = SHA256.Create();
             byte[] hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(content));
             return Convert.ToBase64String(hashedBytes);
         }
-
         private string ComputeSignature(string stringToSign)
         {
             string secret = configuration["AcsKey"];//"CoNkEgq4NOOEHUPtdqmchR8n7SwSFZLAAav6tLJShtIlxCie9jwnrXaUznUV9W4/uV60uaX5wB7ZKftfXvVHLg==";//resourceAccessKey

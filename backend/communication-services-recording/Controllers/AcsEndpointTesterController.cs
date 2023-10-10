@@ -22,12 +22,51 @@ namespace communication_services_recording.Controllers
 
         [HttpPost]
         [Route("TestCreateCallApi")]
-        public async Task<IActionResult> TestCreateCallApi(string apiVersion = "2023-06-15-preview")
+        public async Task<IActionResult> TestCreateCallApi(string userIdentity,string apiVersion = "2023-06-15-preview")
         {
-            var _callRes = await acsEndPointTestService.TestAcsCreateCallApi(apiVersion);
+            var _callRes = await acsEndPointTestService.TestAcsCreateCallApi(userIdentity:userIdentity, apiVersion:apiVersion);
             return Ok(_callRes);
         }
 
+        [HttpPost]
+        [Route("TestAcsStartRecordingApi")]
+        public async Task<IActionResult> TestAcsStartRecordingApi(string serverCallId, string apiVersion = "2023-06-15-preview")
+        {
+            var _callRes = await acsEndPointTestService.TestAcsStartRecordingApi(serverCallId:serverCallId,apiVersion:apiVersion);
+            return Ok(_callRes);
+        }
+
+        [HttpGet]
+        [Route("TestAcsGetRecordingPropertiesApi")]
+        public async Task<IActionResult> TestAcsGetRecordingPropertiesApi(string recordingId, string apiVersion = "2023-06-15-preview")
+        {
+            var _callRes = await acsEndPointTestService.TestAcsGetRecordingPropertiesApi(recordingId: recordingId, apiVersion: apiVersion);
+            return Ok(_callRes);
+        }
+
+        [HttpDelete]
+        [Route("TestStopRecordingApi")]
+        public async Task<IActionResult> TestStopRecordingApi(string recordingId, string apiVersion = "2023-06-15-preview")
+        {
+            var _callRes = await acsEndPointTestService.TestAcsStopRecordingApi(recordingId: recordingId, apiVersion: apiVersion);
+            return Ok(_callRes);
+        }
+
+        [HttpPost]
+        [Route("TestAcsPauseRecordingApi")]
+        public async Task<IActionResult> TestAcsPauseRecordingApi(string recordingId, string apiVersion = "2023-06-15-preview")
+        {
+            var _callRes = await acsEndPointTestService.TestAcsPauseRecordingApi(recordingId: recordingId, apiVersion: apiVersion);
+            return Ok(_callRes);
+        }
+
+        [HttpPost]
+        [Route("TestAcsResumeRecordingApi")]
+        public async Task<IActionResult> TestAcsResumeRecordingApi(string recordingId, string apiVersion = "2023-06-15-preview")
+        {
+            var _callRes = await acsEndPointTestService.TestAcsResumeRecordingApi(recordingId: recordingId, apiVersion: apiVersion);
+            return Ok(_callRes);
+        }
 
     }
 }
