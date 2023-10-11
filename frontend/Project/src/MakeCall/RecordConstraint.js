@@ -4,22 +4,26 @@ import { Dropdown } from 'office-ui-fabric-react/lib/Dropdown';
 export default class RecordConstraint extends React.Component {
     constructor(props) {
         super(props);
-        this.recordingContentConstraints = [
+        this.recordingContentContraints = [
             { key: 'audio', text: 'audio' },
+            { key: 'video', text: 'video' },
+
         ];
         this.recordingChannelConstraints = [
             { key: 'mixed', text: 'mixed' },
             { key: 'unmixed', text: 'unmixed' },
+
         ];
-        this.recordingFormatConstraints = [
+        this.recordingFormatContraints = [
             { key: 'wav', text: 'wav' },
             { key: 'mp3', text: 'mp3' },
+            { key: 'mp4', text: 'mp4' },
         ];
         this.state = {
             recordingContent: 'audio',
             recordingChannel: 'unmixed',
-            recordingFormat: 'wav',
-        };
+            recordingFormat: 'wav'
+        }
     }
 
     handleChange = async (event, item) => {
@@ -31,25 +35,20 @@ export default class RecordConstraint extends React.Component {
 
         if (event.target.id === 'recordingContentDropdown') {
             recordConstraints.recordingContent = item.key;
-            if (item.key === 'audio') {
-                recordConstraints.recordingChannel = 'mixed';
-            } else if (item.key === 'unmixed') {
-                recordConstraints.recordingChannel = 'unmixed';
-                recordConstraints.recordingFormat = 'wav';
-            }
+            this.setState({
+                recordingContent: item.key
+            });
         } else if (event.target.id === 'recordingChannelDropdown') {
             recordConstraints.recordingChannel = item.key;
-            if (item.key === 'mixed') {
-                recordConstraints.recordingFormat = 'wav';
-            }
-            if (item.key === 'unmixed') {
-                recordConstraints.recordingFormat = 'wav';
-            }
+            this.setState({
+                recordingChannel: item.key
+            });
         } else if (event.target.id === 'recordingFormatDropdown') {
             recordConstraints.recordingFormat = item.key;
+            this.setState({
+                recordingFormat: item.key
+            });
         }
-
-        this.setState(recordConstraints);
 
         if (this.props.onChange) {
             this.props.onChange(recordConstraints);
@@ -57,10 +56,6 @@ export default class RecordConstraint extends React.Component {
     }
 
     render() {
-        const formatOptions = this.state.recordingContent === 'audio' && this.state.recordingChannel === 'mixed'
-            ? this.recordingFormatConstraints
-            : [{ key: 'wav', text: 'wav' }];
-
         return (
             <div>
                 <Dropdown
@@ -68,7 +63,7 @@ export default class RecordConstraint extends React.Component {
                     selectedKey={this.state.recordingContent}
                     onChange={this.handleChange}
                     label={'Send Recording Content'}
-                    options={this.recordingContentConstraints}
+                    options={this.recordingContentContraints}
                     styles={{ dropdown: { width: 200 }, label: { color: '#FFF' } }}
                     disabled={this.props.disabled}
                 />
@@ -86,7 +81,7 @@ export default class RecordConstraint extends React.Component {
                     selectedKey={this.state.recordingFormat}
                     onChange={this.handleChange}
                     label={'Send Recording Format'}
-                    options={formatOptions}
+                    options={this.recordingFormatContraints}
                     styles={{ dropdown: { width: 200 }, label: { color: '#FFF' } }}
                     disabled={this.props.disabled}
                 />

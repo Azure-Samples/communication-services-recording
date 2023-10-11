@@ -167,10 +167,6 @@ export default class MakeCall extends React.Component {
     }
 
     placeCall = async (withVideo) => {
-        if (withVideo) {
-            const videoRecordConstraints = { recordingContent: "video", recordingChannel: "mixed", recordingFormat: "mp4" };
-            this.setState({ recordCallConstraint: videoRecordConstraints })
-        }
         try {
             let identitiesToCall = [];
             const userIdsArray = this.destinationUserIds.value.split(',');

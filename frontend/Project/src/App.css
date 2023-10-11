@@ -1198,6 +1198,7 @@ div.volumeVisualizer::before {
     padding: 10px 20px;
     border: 1px solid gray;
     margin-right: 5px;
+    margin-top:20px;
 }
 
     .record-buttons:hover {
