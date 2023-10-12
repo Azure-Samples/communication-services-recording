@@ -6,15 +6,18 @@ export default class RecordConstraint extends React.Component {
         super(props);
         this.recordingContentContraints = [
             { key: 'audio', text: 'audio' },
-            
+            { key: 'video', text: 'video' },
+
         ];
         this.recordingChannelConstraints = [
+            { key: 'mixed', text: 'mixed' },
             { key: 'unmixed', text: 'unmixed' },
-            
+
         ];
         this.recordingFormatContraints = [
             { key: 'wav', text: 'wav' },
-            
+            { key: 'mp3', text: 'mp3' },
+            { key: 'mp4', text: 'mp4' },
         ];
         this.state = {
             recordingContent: 'audio',
@@ -25,9 +28,9 @@ export default class RecordConstraint extends React.Component {
 
     handleChange = async (event, item) => {
         const recordConstraints = {
-            recordingContent : this.state.recordingContent,
-            recordingChannel : this.state.recordingChannel,
-            recordingFormat : this.state.recordingFormat
+            recordingContent: this.state.recordingContent,
+            recordingChannel: this.state.recordingChannel,
+            recordingFormat: this.state.recordingFormat
         };
 
         if (event.target.id === 'recordingContentDropdown') {
@@ -86,4 +89,3 @@ export default class RecordConstraint extends React.Component {
         );
     }
 }
-

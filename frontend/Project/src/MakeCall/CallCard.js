@@ -94,7 +94,9 @@ export default class CallCard extends React.Component {
             reactionRows: [],
             serverCallId: undefined,
             recordingId: undefined,
-            isRecordingActive: false
+            isRecordingActive: false,
+            recordingResponse: undefined,
+            isRecordingPaused: false
         };
         this.selectedRemoteParticipants = new Set();
         this.dataChannelRef = React.createRef();
@@ -206,7 +208,6 @@ export default class CallCard extends React.Component {
                         const recordingChannel = this.recordCallConstraints !== null ? this.recordCallConstraints.recordingChannel : "unmixed";
                         const recordingFormat = this.recordCallConstraints !== null ? this.recordCallConstraints.recordingFormat : "wav";
                         if (this.isRecordCall) {
-                            this.setState({ isRecordingActive: true });
                             const recordRequest = {
                                 serverCallId: serverCallId,
                                 callConnectionId: this.state.callId,
@@ -214,8 +215,14 @@ export default class CallCard extends React.Component {
                                 recordingChannel: recordingChannel,
                                 recordingFormat: recordingFormat
                             };
-                            const res = recordingService.recordCall(recordRequest);
-                            console.log(res);
+
+                            recordingService.recordCall(recordRequest)
+                                .then(res => {
+                                    this.setState({ recordingResponse: res });
+                                })
+                                .catch(error => {
+                                    console.error('Error recording call:', error);
+                                });
                         }
 
                     }).catch(err => {
@@ -969,22 +976,55 @@ export default class CallCard extends React.Component {
     }
 
     handleStartRecording = async () => {
-        this.setState({ isRecordingActive: true });
-        const res = await recordingService.startRecording(this.state.serverCallId);
-        this.setState({ recordingId: res });
+        this.call.info.getServerCallId().then(result => {
+            this.setState({ serverCallId: result });
+            const serverCallId = result;
+            const recordingContent = this.recordCallConstraints !== null ? this.recordCallConstraints.recordingContent : "audio";
+            const recordingChannel = this.recordCallConstraints !== null ? this.recordCallConstraints.recordingChannel : "unmixed";
+            const recordingFormat = this.recordCallConstraints !== null ? this.recordCallConstraints.recordingFormat : "wav";
+
+            const recordRequest = {
+                serverCallId: serverCallId,
+                callConnectionId: this.state.callId,
+                recordingContent: recordingContent,
+                recordingChannel: recordingChannel,
+                recordingFormat: recordingFormat
+            };
+
+            recordingService.startRecording(recordRequest)
+                .then(res => {
+                    this.setState({ recordingResponse: res });
+                    this.setState({ recordingId: res.recordingId });
+                    this.setState({ isRecordingActive: true });
+                })
+                .catch(error => {
+                    console.error('Error recording call:', error);
+                });
+        }).catch(err => {
+            console.log(err);
+        });
+
     }
     handlePauseRecording = async () => {
         const recordingId = this.state.recordingId;
         const res = await recordingService.pauseRecording(recordingId);
+        if (res) {
+            this.setState({ isRecordingPaused: true });
+        }
     }
     handleResumeRecording = async () => {
         const recordingId = this.state.recordingId;
         const res = await recordingService.resumeRecording(recordingId);
+        if (res) {
+            this.setState({ isRecordingPaused: false });
+        }
     }
     handleStopRecording = async () => {
-        this.setState({ isRecordingActive: false });
         const recordingId = this.state.recordingId;
         const res = await recordingService.stopRecording(recordingId);
+        if (res) {
+            this.setState({ isRecordingActive: false });
+        }
     }
 
     render() {
@@ -992,6 +1032,34 @@ export default class CallCard extends React.Component {
 
         return (
             <div className="ms-Grid mt-2">
+                {this.state.recordingResponse &&
+
+                    <div>
+                        <h2>Rcording Response:</h2>
+                        <div>
+                            <div>Call Connection ID: {this.state.recordingResponse.callConnectionId}</div>
+                            <div>Server Call ID: {this.state.recordingResponse.serverCallId}</div>
+                            <div>Recording ID: {this.state.recordingResponse.recordingId}</div>
+                            {this.state.recordingResponse.error && <div>Error Message: {this.state.recordingResponse.error.message}</div>}
+                            {this.state.recordingResponse.error && <div>Error Stack Trace: {this.state.recordingResponse.error.stacktrace}</div>}
+                            {this.state.recordingResponse.events && <div>
+                                <h3>Events:</h3>
+                                <ul>
+                                    {this.state.recordingResponse.events && this.state.recordingResponse.events.map((event, index) => (
+                                        <li key={index}>
+                                            <div>Name: {event.name}</div>
+                                            <div>Start Time: {event.startTime}</div>
+                                            <div>End Time: {event.endTime}</div>
+                                            <div>Response: {event.response}</div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                            }
+                        </div>
+                        <br></br>
+                    </div>
+                }
                 <div className="ms-Grid-row">
                     {
                         this.state.callMessage &&
@@ -1299,6 +1367,20 @@ export default class CallCard extends React.Component {
                             menuOptionsState={{ isSpotlighted: this.state.isSpotlighted }}
                         />
 
+                        <br></br>
+                        {
+                            !this.isRecordCall &&
+                            <div>
+                                {this.state.callState === 'Connected' &&
+                                    <div>
+                                        {!this.state.isRecordingActive && <button className="record-buttons" onClick={this.handleStartRecording}>Start Recording</button>}
+                                        {this.state.isRecordingActive && !this.state.isRecordingPaused && < button className="record-buttons" onClick={this.handlePauseRecording}>Pause</button>}
+                                        {this.state.isRecordingActive && this.state.isRecordingPaused && <button className="record-buttons" onClick={this.handleResumeRecording}>Resume</button>}
+                                        {this.state.isRecordingActive && <button className="record-buttons" onClick={this.handleStopRecording}>Stop</button>}
+                                    </div>}
+                            </div>
+                        }
+
                         <Panel type={PanelType.medium}
                             isLightDismiss
                             isOpen={this.state.showSettings}
@@ -1569,18 +1651,6 @@ export default class CallCard extends React.Component {
                                 )
                             }
                         </ul>
-                    </div>
-
-                }
-                {
-                    this.state.callState === 'Connected' &&
-                    <div>
-                            <h3>Record</h3>
-                    <br></br>
-                            {!this.state.isRecordingActive && <button className="record-buttons" onClick={this.handleStartRecording}>Start</button>}
-                            {this.state.isRecordingActive && <button className="record-buttons" onClick={this.handlePauseRecording}>Pause</button>}
-                            {this.state.isRecordingActive && <button className="record-buttons" onClick={this.handleResumeRecording}>Resume</button>}
-                            {this.state.isRecordingActive && <button className="record-buttons" onClick={this.handleStopRecording}>Stop</button>}
                     </div>
                 }
             </div>
