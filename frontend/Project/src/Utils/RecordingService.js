@@ -1,7 +1,7 @@
 export const recordingService = {
     recordCall: async (recordRequest) => {
         try {
-            const response = await fetch('https://localhost:7108/api/recording/recording', {
+            const response = await fetch('https://localhost:7108/api/recording/initiateRecording', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -23,7 +23,7 @@ namespace communication_services_recording.Controllers
         }
 
         [HttpPost]
-        [Route("recording")]
+        [Route("initiateRecording")]
         public async Task<IActionResult> Recording(RecordingRequest recordingRequest)
         {
             try
@@ -166,9 +166,9 @@ namespace communication_services_recording.Controllers
 
         [HttpPost]
         [Route("stop")]
-        public async Task<IActionResult> StopRecording()
+        public async Task<IActionResult> StopRecording(string recordingId)
         {
-            await this.callRecordingService.StopRecording("");
+            await this.callRecordingService.StopRecording(recordingId);
             return Ok();
         }
 

@@ -202,7 +202,7 @@ export default class CallCard extends React.Component {
                         this.callFinishConnectingResolve();
                     }
                 }
-                if (this.call.state === 'Connected') {
+                if (this.call.state === 'Connected') {                    
                     this.call.info.getServerCallId().then(result => {
                         this.setState({ serverCallId: result });
                         const serverCallId = result;
@@ -225,7 +225,7 @@ export default class CallCard extends React.Component {
                                    if(res && res.recordingId){
                                     this.handleOutgoingAudioEffect();
                                     this.timeout(10000);
-                                    this.handleOutgoingAudioEffect(true);
+                                    this.handleOutgoingAudioEffect();
 
                                     this.handleStopRecording();
                                    }
