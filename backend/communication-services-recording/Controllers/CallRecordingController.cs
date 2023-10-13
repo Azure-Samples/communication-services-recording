@@ -103,8 +103,10 @@ namespace communication_services_recording.Controllers
         {
             ArgumentNullException.ThrowIfNull(recordingRequest, nameof(recordingRequest));
             ArgumentException.ThrowIfNullOrEmpty(recordingRequest.ServerCallId);
-
-            await this.callRecordingService.StartRecording(recordingRequest);
+            var recordingRespone = new RecordingResponse();
+            recordingRespone.ServerCallId = recordingRequest.ServerCallId;
+            var recordingResult = await this.callRecordingService.StartRecording(recordingRequest);
+            recordingRespone.RecordingId = recordingResult.RecordingId;
             return Ok();
         }
 
@@ -126,9 +128,9 @@ namespace communication_services_recording.Controllers
 
         [HttpPost]
         [Route("stop")]
-        public async Task<IActionResult> StopRecording()
+        public async Task<IActionResult> StopRecording(string recordingId)
         {
-            await this.callRecordingService.StopRecording("");
+            await this.callRecordingService.StopRecording(recordingId);
             return Ok();
         }
 
