@@ -25,7 +25,7 @@ namespace communication_services_recording.Controllers
         public async Task<IActionResult> TestCreateCallApi(string userIdentity, string apiVersion = "2023-06-15-preview")
         {
             var _callRes = await acsEndPointTestService.TestAcsCreateCallApi(userIdentity: userIdentity, apiVersion: apiVersion);
-            return Ok(_callRes);
+            return Ok(_callRes.Content.ReadAsStringAsync().Result);//_callRes
         }
 
         [HttpPost]
