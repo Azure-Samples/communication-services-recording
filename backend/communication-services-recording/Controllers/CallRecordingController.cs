@@ -9,7 +9,7 @@ namespace communication_services_recording.Controllers
     {
         private readonly ICallRecordingService callRecordingService;
         private readonly CallAutomationClient callAutomationClient;
-        private static string recordingId = "";
+        private static string recordingId = string.Empty;
         private readonly ILogger logger;
 
         public CallRecordingController(
