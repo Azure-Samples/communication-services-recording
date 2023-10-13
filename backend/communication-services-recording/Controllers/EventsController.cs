@@ -1,4 +1,5 @@
 ﻿using Azure.Messaging;
+using System.Reflection.Metadata;
 
 namespace communication_services_recording.Controllers
 {
@@ -63,12 +64,14 @@ namespace communication_services_recording.Controllers
                         logger.LogInformation("Call recording file status updated");
                         var recordingFileStatusEvent = eventGridEvent.Data.ToObjectFromJson<RecordingFileStatusUpdatedEvent>();
                         string contentLocation = string.Empty;
+                        string documentId = string.Empty;
                         foreach (var recordingInfo in recordingFileStatusEvent?.recordingStorageInfo?.recordingChunks)
                         {
                             contentLocation = recordingInfo.contentLocation;
+                            documentId = recordingInfo.documentId;
                         }
 
-                        await downloadRecording(contentLocation);
+                        await downloadRecording(contentLocation, documentId);
                         break;
                 }
             }
@@ -95,10 +98,10 @@ namespace communication_services_recording.Controllers
             eventProcessor.ProcessEvents(cloudEvents);
             return Ok();
         }
-        private async Task downloadRecording(string contentLocation)
+        private async Task downloadRecording(string contentLocation, string documentId)
         {
             var recordingDownloadUri = new Uri(contentLocation);
-            var response = await this.callAutomationClient.GetCallRecording().DownloadToAsync(recordingDownloadUri, "test.wav");
+            var response = await this.callAutomationClient.GetCallRecording().DownloadToAsync(recordingDownloadUri, $"{documentId}.mp4");
         }
     }
 }
