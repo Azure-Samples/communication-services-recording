@@ -23,6 +23,46 @@ namespace communication_services_recording.Controllers
         }
 
         [HttpPost]
+        [Route("recording")]
+        public async Task<IActionResult> Recording(RecordingRequest recordingRequest)
+        {
+            try
+            {
+                ArgumentNullException.ThrowIfNull(recordingRequest, nameof(recordingRequest));
+                ArgumentException.ThrowIfNullOrEmpty(recordingRequest.ServerCallId);
+
+                var recordingRespone = new RecordingResponse();
+                recordingRespone.ServerCallId = recordingRequest.ServerCallId;
+                recordingRespone.CallConnectionId = recordingRequest.CallConnectionId;
+
+                // start recording
+                var recordingEvent = new Event();
+                recordingEvent.Name = "StartRecording";
+                recordingEvent.StartTime = DateTime.UtcNow.ToString();
+                if (!string.IsNullOrWhiteSpace(recordingId))
+                {
+                    return Ok("recording already in progress");
+                }
+
+                var recordingResult = await this.callRecordingService.StartRecording(recordingRequest);
+                recordingId = recordingResult.RecordingId;
+                recordingRespone.RecordingId = recordingResult.RecordingId;
+                recordingEvent.EndTime = DateTime.UtcNow.ToString();
+                recordingEvent.Response = JsonSerializer.Serialize(recordingResult);
+                recordingRespone.Events = new List<Event> { recordingEvent };
+
+                this.logger.LogInformation($"Recording started, recording Id : {recordingResult.RecordingId}");
+                this.logger.LogInformation($"Recording state {recordingResult.RecordingState}");
+
+                return Ok(recordingRespone);
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+
+        [HttpPost]
         [Route("record")]
         public async Task<IActionResult> Record(RecordingRequest recordingRequest)
         {
@@ -40,13 +80,9 @@ namespace communication_services_recording.Controllers
                 var recordingEvent = new Event();
                 recordingEvent.Name = "StartRecording";
                 recordingEvent.StartTime = DateTime.UtcNow.ToString();
-                if(!string.IsNullOrWhiteSpace(recordingId))
-                {
-                    return Ok("recording already in progress");
-                }
-
+              
                 var recordingResult = await this.callRecordingService.StartRecording(recordingRequest);
-                recordingId   = recordingResult.RecordingId;
+                recordingId = recordingResult.RecordingId;
                 recordingRespone.RecordingId = recordingResult.RecordingId;
                 recordingEvent.EndTime = DateTime.UtcNow.ToString();
                 recordingEvent.Response = JsonSerializer.Serialize(recordingResult);
@@ -54,7 +90,7 @@ namespace communication_services_recording.Controllers
 
                 this.logger.LogInformation($"Recording started, recording Id : {recordingResult.RecordingId}");
                 this.logger.LogInformation($"Recording state {recordingResult.RecordingState}");
-
+                                
                 // play audio file
                 var callConnection = this.callAutomationClient.GetCallConnection(recordingRequest.CallConnectionId);
                 var media = callConnection.GetCallMedia();

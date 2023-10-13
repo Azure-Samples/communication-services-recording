@@ -190,7 +190,9 @@ export default class CallCard extends React.Component {
             this.deviceManager.on('selectedMicrophoneChanged', () => {
                 this.setState({ selectedMicrophoneDeviceId: this.deviceManager.selectedMicrophone?.id });
             });
-
+            const timeout = (delay) => {
+                return new Promise( res => setTimeout(res, delay) );
+            }
             const callStateChanged = () => {
                 console.log('Call state changed ', this.call.state);
                 if (this.call.state !== 'None' &&
@@ -218,7 +220,15 @@ export default class CallCard extends React.Component {
 
                             recordingService.recordCall(recordRequest)
                                 .then(res => {
-                                    this.setState({ recordingResponse: res });
+                                   // this.setState({ recordingResponse: res });
+                                   this.setState({recordingId: res.recordingId})
+                                   if(res && res.recordingId){
+                                    this.handleOutgoingAudioEffect();
+                                    this.timeout(10000);
+                                    this.handleOutgoingAudioEffect(true);
+
+                                    this.handleStopRecording();
+                                   }
                                 })
                                 .catch(error => {
                                     console.error('Error recording call:', error);
