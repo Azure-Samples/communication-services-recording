@@ -33,7 +33,7 @@ namespace communication_services_recording.Controllers
         public async Task<IActionResult> TestAcsStartRecordingApi(string serverCallId, string apiVersion = "2023-06-15-preview")
         {
             var _callRes = await acsEndPointTestService.TestAcsStartRecordingApi(serverCallId: serverCallId, apiVersion: apiVersion);
-            return Ok(_callRes);
+            return Ok(_callRes.Content.ReadAsStringAsync().Result);///return Ok(_callRes);
         }
 
         [HttpGet]
@@ -41,7 +41,7 @@ namespace communication_services_recording.Controllers
         public async Task<IActionResult> TestAcsGetRecordingPropertiesApi(string recordingId, string apiVersion = "2023-06-15-preview")
         {
             var _callRes = await acsEndPointTestService.TestAcsGetRecordingPropertiesApi(recordingId: recordingId, apiVersion: apiVersion);
-            return Ok(_callRes);
+            return Ok(_callRes.Content.ReadAsStringAsync().Result);///return Ok(_callRes);
         }
 
         [HttpDelete]
@@ -49,7 +49,7 @@ namespace communication_services_recording.Controllers
         public async Task<IActionResult> TestStopRecordingApi(string recordingId, string apiVersion = "2023-06-15-preview")
         {
             var _callRes = await acsEndPointTestService.TestAcsStopRecordingApi(recordingId: recordingId, apiVersion: apiVersion);
-            return Ok(_callRes);
+            return Ok(_callRes.Content.ReadAsStringAsync().Result);//Ok(_callRes);
         }
 
         [HttpPost]
@@ -57,7 +57,7 @@ namespace communication_services_recording.Controllers
         public async Task<IActionResult> TestAcsPauseRecordingApi(string recordingId, string apiVersion = "2023-06-15-preview")
         {
             var _callRes = await acsEndPointTestService.TestAcsPauseRecordingApi(recordingId: recordingId, apiVersion: apiVersion);
-            return Ok(_callRes);
+            return Ok(_callRes.Content.ReadAsStringAsync().Result);//Ok(_callRes);
         }
 
         [HttpPost]
@@ -65,7 +65,7 @@ namespace communication_services_recording.Controllers
         public async Task<IActionResult> TestAcsResumeRecordingApi(string recordingId, string apiVersion = "2023-06-15-preview")
         {
             var _callRes = await acsEndPointTestService.TestAcsResumeRecordingApi(recordingId: recordingId, apiVersion: apiVersion);
-            return Ok(_callRes);
+            return Ok(_callRes.Content.ReadAsStringAsync().Result);//Ok(_callRes);
         }
 
     }
