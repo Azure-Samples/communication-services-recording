@@ -190,9 +190,9 @@ export default class CallCard extends React.Component {
             this.deviceManager.on('selectedMicrophoneChanged', () => {
                 this.setState({ selectedMicrophoneDeviceId: this.deviceManager.selectedMicrophone?.id });
             });
-            const timeout = (delay) => {
-                return new Promise( res => setTimeout(res, delay) );
-            }
+            // const timeout = (delay) => {
+            //     return new Promise( res => setTimeout(res, delay) );
+            // }
             const callStateChanged = () => {
                 console.log('Call state changed ', this.call.state);
                 if (this.call.state !== 'None' &&
@@ -202,14 +202,14 @@ export default class CallCard extends React.Component {
                         this.callFinishConnectingResolve();
                     }
                 }
-                if (this.call.state === 'Connected') {                    
+                if (this.call.state === 'Connected') {                   
                     this.call.info.getServerCallId().then(result => {
                         this.setState({ serverCallId: result });
                         const serverCallId = result;
                         const recordingContent = this.recordCallConstraints !== null ? this.recordCallConstraints.recordingContent : "audio";
                         const recordingChannel = this.recordCallConstraints !== null ? this.recordCallConstraints.recordingChannel : "unmixed";
                         const recordingFormat = this.recordCallConstraints !== null ? this.recordCallConstraints.recordingFormat : "wav";
-                        if (this.isRecordCall) {
+                        if (this.isRecordCall && this.call.direction === 'Outgoing') {
                             const recordRequest = {
                                 serverCallId: serverCallId,
                                 callConnectionId: this.state.callId,
@@ -220,14 +220,18 @@ export default class CallCard extends React.Component {
 
                             recordingService.recordCall(recordRequest)
                                 .then(res => {
-                                   // this.setState({ recordingResponse: res });
+                                   this.setState({ recordingResponse: res });
                                    this.setState({recordingId: res.recordingId})
                                    if(res && res.recordingId){
-                                    this.handleOutgoingAudioEffect();
-                                    this.timeout(10000);
-                                    this.handleOutgoingAudioEffect();
-
-                                    this.handleStopRecording();
+                                    try{
+                                        this.handleOutgoingAudioEffect();
+                                    setTimeout(() => {
+                                        this.handleOutgoingAudioEffect();
+                                        this.handleStopRecording();
+                                      }, 10000);
+                                    }catch(error){
+                                        console.log(error);
+                                    }
                                    }
                                 })
                                 .catch(error => {

@@ -6,7 +6,7 @@ export default class RecordConstraint extends React.Component {
         super(props);
         this.recordingContentContraints = [
             { key: 'audio', text: 'audio' },
-            { key: 'video', text: 'video' },
+            { key: 'audioVideo', text: 'audioVideo' },
 
         ];
         this.recordingChannelConstraints = [
