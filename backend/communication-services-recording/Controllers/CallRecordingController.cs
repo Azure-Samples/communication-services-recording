@@ -9,6 +9,7 @@ namespace communication_services_recording.Controllers
     {
         private readonly ICallRecordingService callRecordingService;
         private readonly CallAutomationClient callAutomationClient;
+        private static string recordingId = string.Empty;
         private readonly ILogger logger;
 
         public CallRecordingController(
@@ -19,6 +20,46 @@ namespace communication_services_recording.Controllers
             this.callRecordingService = callRecordingService;
             this.callAutomationClient = callAutomationClient;
             this.logger = logger;
+        }
+
+        [HttpPost]
+        [Route("initiateRecording")]
+        public async Task<IActionResult> Recording(RecordingRequest recordingRequest)
+        {
+            try
+            {
+                ArgumentNullException.ThrowIfNull(recordingRequest, nameof(recordingRequest));
+                ArgumentException.ThrowIfNullOrEmpty(recordingRequest.ServerCallId);
+
+                var recordingRespone = new RecordingResponse();
+                recordingRespone.ServerCallId = recordingRequest.ServerCallId;
+                recordingRespone.CallConnectionId = recordingRequest.CallConnectionId;
+
+                // start recording
+                var recordingEvent = new Event();
+                recordingEvent.Name = "StartRecording";
+                recordingEvent.StartTime = DateTime.UtcNow.ToString();
+                if (!string.IsNullOrWhiteSpace(recordingId))
+                {
+                    return Ok("recording already in progress");
+                }
+
+                var recordingResult = await this.callRecordingService.StartRecording(recordingRequest);
+                recordingId = recordingResult.RecordingId;
+                recordingRespone.RecordingId = recordingResult.RecordingId;
+                recordingEvent.EndTime = DateTime.UtcNow.ToString();
+                recordingEvent.Response = JsonSerializer.Serialize(recordingResult);
+                recordingRespone.Events = new List<Event> { recordingEvent };
+
+                this.logger.LogInformation($"Recording started, recording Id : {recordingResult.RecordingId}");
+                this.logger.LogInformation($"Recording state {recordingResult.RecordingState}");
+
+                return Ok(recordingRespone);
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
         }
 
         [HttpPost]
@@ -39,31 +80,38 @@ namespace communication_services_recording.Controllers
                 var recordingEvent = new Event();
                 recordingEvent.Name = "StartRecording";
                 recordingEvent.StartTime = DateTime.UtcNow.ToString();
+                //if(!string.IsNullOrWhiteSpace(recordingId))
+                //{
+                //    return Ok("recording already in progress");
+                //}
+
+                //{
+                //recordingId   = recordingResult.RecordingId;
+                //}
 
                 var recordingResult = await this.callRecordingService.StartRecording(recordingRequest);
+                recordingId   = recordingResult.RecordingId;
                 recordingRespone.RecordingId = recordingResult.RecordingId;
                 recordingEvent.EndTime = DateTime.UtcNow.ToString();
                 recordingEvent.Response = JsonSerializer.Serialize(recordingResult);
-                recordingRespone.Events = new List<Event> { recordingEvent };
 
-                this.logger.LogInformation($"Recording started, recording Id : {recordingResult.RecordingId}");
-                this.logger.LogInformation($"Recording state {recordingResult.RecordingState}");
-
-                Thread.Sleep(10000);
-
+                // play audio file
+                var callConnection = this.callAutomationClient.GetCallConnection(recordingRequest.CallConnectionId);
+                var media = callConnection.GetCallMedia();
+                var playSource = new FileSource(new Uri("https://voiceage.com/wbsamples/in_mono/Chorus.wav"));
+                // play audio file
+                var playEvent = new Event();
+                playEvent.Name = "PlayToAll";
+                playEvent.StartTime = DateTime.UtcNow.ToString();
+                PlayResult playResult = await media.PlayToAllAsync(playSource);
                 //// play audio file
-                //var callConnection = this.callAutomationClient.GetCallConnection(recordingRequest.CallConnectionId);
-                //var media = callConnection.GetCallMedia();
-                //var playSource = new FileSource(new Uri("https://voiceage.com/wbsamples/in_mono/Chorus.wav"));
-
-                //var playEvent = new Event();
-                //playEvent.Name = "PlayToAll";
-                //playEvent.StartTime = DateTime.UtcNow.ToString();
-                //PlayResult playResult = await media.PlayToAllAsync(playSource);
-
-                //// We can wait for EventProcessor that related to outbound call here. In this case, we are waiting for PlayToAllAsync
-                //// wait for play to complete
-                //PlayEventResult playEventResult = await playResult.WaitForEventProcessorAsync();
+                // We can wait for EventProcessor that related to outbound call here. In this case, we are waiting for PlayToAllAsync
+                // wait for play to complete
+                PlayEventResult playEventResult = await playResult.WaitForEventProcessorAsync();
+                playEvent.EndTime = DateTime.UtcNow.ToString();
+                playEvent.Response = JsonSerializer.Serialize(playEventResult);
+                this.logger.LogInformation($"Play completed successful: {playEventResult.IsSuccess}");
+                recordingRespone.Events.Add(playEvent);
                 //playEvent.EndTime = DateTime.UtcNow.ToString();
                 //playEvent.Response = JsonSerializer.Serialize(playEventResult);
                 //this.logger.LogInformation($"Play completed successful: {playEventResult.IsSuccess}");
@@ -107,7 +155,7 @@ namespace communication_services_recording.Controllers
             recordingRespone.ServerCallId = recordingRequest.ServerCallId;
             var recordingResult = await this.callRecordingService.StartRecording(recordingRequest);
             recordingRespone.RecordingId = recordingResult.RecordingId;
-            return Ok();
+            return Ok(recordingRespone);
         }
 
         [HttpPost]
