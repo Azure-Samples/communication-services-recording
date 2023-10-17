@@ -1205,3 +1205,7 @@ div.volumeVisualizer::before {
         border: 1px solid dodgerblue;
         color: dodgerblue;
     }
+  
+.dropdown-pos{
+  float:right;
+}

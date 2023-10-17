@@ -1,4 +1,4 @@
 {
-    "connectionString": "endpoint=https://acsrecording.unitedstates.communication.azure.com/;accesskey=CoNkEgq4NOOEHUPtdqmchR8n7SwSFZLAAav6tLJShtIlxCie9jwnrXaUznUV9W4/uV60uaX5wB7ZKftfXvVHLg==",
+    "connectionString": "endpoint=https://dacsrecordingtest.unitedstates.communication.azure.com/;accesskey=GUx7e3V1L6OR1MRbVHTsw+5vJ4OAkZcaDL3z1JcmJTu/E43NbBmHAjvthR6b+ZwXc7vdarx+r4H5TFsmtEP2pw==",
     "functionAppOneSignalTokenRegistrationUrl": ""
 }
