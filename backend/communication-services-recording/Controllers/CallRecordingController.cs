@@ -182,5 +182,12 @@ namespace communication_services_recording.Controllers
             return Ok();
         }
 
+        [HttpGet]
+        [Route("download/path")]
+        public async Task<IActionResult> GetRecordingPath(string recordingId)
+        {
+            var response = await this.callRecordingService.RecordingPath(recordingId);
+            return Ok();
+        }
     }
 }

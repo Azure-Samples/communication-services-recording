@@ -1,4 +1,5 @@
 ﻿using Azure.Messaging;
+using Newtonsoft.Json.Linq;
 using System.Reflection.Metadata;
 
 namespace communication_services_recording.Controllers
@@ -65,13 +66,15 @@ namespace communication_services_recording.Controllers
                         var recordingFileStatusEvent = eventGridEvent.Data.ToObjectFromJson<RecordingFileStatusUpdatedEvent>();
                         string contentLocation = string.Empty;
                         string documentId = string.Empty;
+                        string metadataLocation = string.Empty;
                         foreach (var recordingInfo in recordingFileStatusEvent?.recordingStorageInfo?.recordingChunks)
                         {
                             contentLocation = recordingInfo.contentLocation;
                             documentId = recordingInfo.documentId;
+                            metadataLocation = recordingInfo.metadataLocation;
                         }
 
-                        await downloadRecording(contentLocation, documentId);
+                        await DownloadRecording(contentLocation, metadataLocation, documentId);
                         break;
                 }
             }
@@ -98,10 +101,30 @@ namespace communication_services_recording.Controllers
             eventProcessor.ProcessEvents(cloudEvents);
             return Ok();
         }
-        private async Task downloadRecording(string contentLocation, string documentId)
+        private async Task DownloadRecording(string contentLocation, string metadataLocation, string documentId)
         {
             var recordingDownloadUri = new Uri(contentLocation);
-            var response = await this.callAutomationClient.GetCallRecording().DownloadToAsync(recordingDownloadUri, $"{documentId}.mp4");
+            string format = await GetFormat(metadataLocation);
+            await this.callAutomationClient.GetCallRecording().DownloadToAsync(recordingDownloadUri, $"{documentId}.{format}");
+        }
+
+        private async Task<string> GetFormat(string metadataLocation)
+        {
+            string format = string.Empty;
+            var metaDataDownloadUri = new Uri(metadataLocation);
+            var metaDataResponse = await callAutomationClient.GetCallRecording().DownloadStreamingAsync(metaDataDownloadUri);
+            using (StreamReader streamReader = new StreamReader(metaDataResponse))
+            {
+                // Read the JSON content from the stream and parse it into an object
+                string jsonContent = await streamReader.ReadToEndAsync();
+
+                // Parse the JSON string
+                JObject jsonObject = JObject.Parse(jsonContent);
+
+                // Access the "format" value from the "recordingInfo" object
+                format = (string)jsonObject["recordingInfo"]["format"];
+            }
+            return format;
         }
     }
 }

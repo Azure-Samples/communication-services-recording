@@ -1,5 +1,7 @@
 ﻿
 
+using Azure;
+
 namespace communication_services_recording.Services
 {
     public class CallRecordingService : ICallRecordingService
@@ -100,6 +102,20 @@ namespace communication_services_recording.Services
                 this.logger.LogError(ex, $"Error occured during the stop recording");
                 throw;
             }
+        }
+
+        public async Task<dynamic> RecordingPath(string recordingId)
+        {
+            var state = await this.callAutomationClient.GetCallRecording().GetStateAsync(recordingId);
+            if(state.Value is not null)
+            {
+                if (state.Value.Equals("inactive"))
+                {
+                    //TODO need to finish this logic
+                   
+                }
+            }
+            return state;
         }
     }
 }
