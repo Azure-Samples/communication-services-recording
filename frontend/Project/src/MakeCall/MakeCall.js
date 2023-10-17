@@ -14,6 +14,7 @@ import Login from './Login';
 import MediaConstraint from './MediaConstraint';
 import RecordConstraint from './RecordConstraint';
 import { setLogLevel, AzureLogger } from '@azure/logger';
+import { recordingService } from "../Utils/RecordingService";
 import { inflate } from 'pako';
 export default class MakeCall extends React.Component {
     constructor(props) {
@@ -52,7 +53,8 @@ export default class MakeCall extends React.Component {
             preCallDiagnosticsResults: {},
             identityMri: undefined,
             recordCallConstraint: null,
-            isRecord: true
+            isRecord: true,
+            downloadContentResponse:undefined
         };
 
         setInterval(() => {
@@ -146,8 +148,22 @@ export default class MakeCall extends React.Component {
 
                     incomingCall.on('callEnded', args => {
                         this.displayCallEndReason(args.callEndReason);
+                        
+                        const downloadContent = () => {
+                            recordingService.downloadRecording()
+                                .then(res => {
+                                    this.setState({downloadContentResponse:res})
+                                    if(this.state.downloadContentResponse){
+                                        clearInterval(apiIntervalId);
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error', error);
+                                });
+                        };
+                        downloadContent();
+                        const apiIntervalId = setInterval(downloadContent, 60000);
                     });
-
                 });
                 this.setState({ loggedIn: true });
                 this.logInComponentRef.current.setCallAgent(this.callAgent);
@@ -325,6 +341,7 @@ export default class MakeCall extends React.Component {
 
         return (
             <div>
+                {this.state.downloadContentResponse && <div><h2>Downloaded recording path:- {this.state.downloadContentResponse}</h2></div>}
                 <Login onLoggedIn={this.handleLogIn} ref={this.logInComponentRef}/>
                 <div className="card">
                     <div className="ms-Grid">
@@ -373,10 +390,17 @@ export default class MakeCall extends React.Component {
                         {
                             !this.state.incomingCall && !this.state.call &&
                             <div>
-                                    <div>
-                                        <h2>Record</h2> <input type="checkbox" checked ={this.state.isRecord} onChange={this.handleCheckboxChange} />
-                                    </div>
-                                
+                                <div>
+                                    <h3 className="mb-1">Record Constraints</h3>
+                                        <RecordConstraint
+                                            onChange={this.handleRecordConstraint}
+                                            disabled={this.state.call || !this.state.loggedIn}
+                                        />
+                                </div>
+                                <br></br>
+                                <div>
+                                    <h2>Record</h2> <input type="checkbox" checked ={this.state.isRecord} onChange={this.handleCheckboxChange} />
+                                </div>
                                 <div className="ms-Grid-row mt-3">
                                     <div className="call-input-panel mb-5 ms-Grid-col ms-sm12 ms-md12 ms-lg12 ms-xl6 ms-xxl3">
                                         <div className="ms-Grid-row">
@@ -452,16 +476,6 @@ export default class MakeCall extends React.Component {
                                             disabled={this.state.call || !this.state.loggedIn}
                                         />
                                     </div>
-                                    </div>
-
-                                    <div className="ms-Grid-row mt-3">
-                                        <div className="call-input-panel mb-5 ms-Grid-col ms-sm12 ms-lg12 ms-xl12 ms-xxl4">
-                                            <h3 className="mb-1">Record Constraints</h3>
-                                            <RecordConstraint
-                                                onChange={this.handleRecordConstraint}
-                                                disabled={this.state.call || !this.state.loggedIn}
-                                            />
-                                        </div>
                                     </div>
                             </div>
 

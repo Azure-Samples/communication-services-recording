@@ -96,7 +96,8 @@ export default class CallCard extends React.Component {
             recordingId: undefined,
             isRecordingActive: false,
             recordingResponse: undefined,
-            isRecordingPaused: false
+            isRecordingPaused: false,
+            inCallRecordingConstraint:null
         };
         this.selectedRemoteParticipants = new Set();
         this.dataChannelRef = React.createRef();
@@ -209,19 +210,41 @@ export default class CallCard extends React.Component {
                         const recordingContent = this.recordCallConstraints !== null ? this.recordCallConstraints.recordingContent : "audio";
                         const recordingChannel = this.recordCallConstraints !== null ? this.recordCallConstraints.recordingChannel : "unmixed";
                         const recordingFormat = this.recordCallConstraints !== null ? this.recordCallConstraints.recordingFormat : "wav";
-                        if (this.isRecordCall && this.call.direction === 'Outgoing') {
-                            const recordRequest = {
-                                serverCallId: serverCallId,
-                                callConnectionId: this.state.callId,
-                                recordingContent: recordingContent,
-                                recordingChannel: recordingChannel,
-                                recordingFormat: recordingFormat
-                            };
-
+                        const recordRequest = {
+                            serverCallId: serverCallId,
+                            callConnectionId: this.state.callId,
+                            recordingContent: recordingContent,
+                            recordingChannel: recordingChannel,
+                            recordingFormat: recordingFormat
+                        };
+                        
+                        if (this.isRecordCall && this.call.direction === 'Outgoing' && this.call.tsCall.conversationType !=='groupCall') {
                             recordingService.recordCall(recordRequest)
                                 .then(res => {
                                    this.setState({ recordingResponse: res });
                                    this.setState({recordingId: res.recordingId})
+                                   if(res && res.recordingId){
+                                    try{
+                                        this.handleOutgoingAudioEffect();
+                                    setTimeout(() => {
+                                        this.handleOutgoingAudioEffect();
+                                        this.handleStopRecording();
+                                      }, 10000);
+                                    }catch(error){
+                                        console.log(error);
+                                    }
+                                   }
+                                })
+                                .catch(error => {
+                                    console.error('Error recording call:', error);
+                                });
+                        }
+
+                        if (this.isRecordCall && this.call.tsCall.conversationType ==='groupCall' && this.call.remoteParticipants.length === 0) {
+                            recordingService.recordCall(recordRequest)
+                                .then(res => {
+                                    this.setState({ recordingResponse: res });
+                                    this.setState({recordingId: res.recordingId})
                                    if(res && res.recordingId){
                                     try{
                                         this.handleOutgoingAudioEffect();
@@ -993,9 +1016,9 @@ export default class CallCard extends React.Component {
         this.call.info.getServerCallId().then(result => {
             this.setState({ serverCallId: result });
             const serverCallId = result;
-            const recordingContent = this.recordCallConstraints !== null ? this.recordCallConstraints.recordingContent : "audio";
-            const recordingChannel = this.recordCallConstraints !== null ? this.recordCallConstraints.recordingChannel : "unmixed";
-            const recordingFormat = this.recordCallConstraints !== null ? this.recordCallConstraints.recordingFormat : "wav";
+            const recordingContent = this.state.inCallRecordingConstraint !== null ? this.state.inCallRecordingConstraint.recordingContent : "audio";
+            const recordingChannel = this.state.inCallRecordingConstraint !== null ? this.state.inCallRecordingConstraint.recordingChannel : "unmixed";
+            const recordingFormat = this.state.inCallRecordingConstraint !== null ? this.state.inCallRecordingConstraint.recordingFormat : "wav";
 
             const recordRequest = {
                 serverCallId: serverCallId,
@@ -1041,6 +1064,12 @@ export default class CallCard extends React.Component {
         }
     }
 
+    handleRecordConstraint = (constraints) => {
+        if (constraints) {
+            this.setState({inCallRecordingConstraint:constraints})
+        }
+    }
+
     render() {
         const emojis = ['👍', '❤️', '😂', '👏', '😲'];
 
@@ -1074,6 +1103,18 @@ export default class CallCard extends React.Component {
                         <br></br>
                     </div>
                 }
+
+                {
+                    !this.isRecordCall && this.state.callState === 'Connected' && 
+                    <div className="dropdown-pos">
+                        <h3 className="mb-1">Record Constraints</h3>
+                            <RecordConstraint
+                                onChange={this.handleRecordConstraint}
+                            />
+                        <br></br>
+                    </div>       
+                }
+
                 <div className="ms-Grid-row">
                     {
                         this.state.callMessage &&
@@ -1374,6 +1415,7 @@ export default class CallCard extends React.Component {
                             style={{ cursor: 'pointer' }}>
                             {emojis[4]}
                         </span>
+
                         <ParticipantMenuOptions
                             id={this.identifier}
                             appendMenuitems={this.getMenuItems()}
