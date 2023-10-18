@@ -103,7 +103,6 @@ export const recordingService = {
     },
 
     downloadRecording: async (id) => {
-        debugger;
         try {
             const response = await fetch(`https://localhost:7108/api/recording/download/path?recordingId=${id}`, {
                 method: 'GET',
@@ -118,7 +117,6 @@ export const recordingService = {
             const data = await response.json();
             console.log('POST request succeeded:', data);
             return data;
-            //return 'D:\\download\\recording';
         }
         catch (error) {
             console.error('POST request failed:', error);

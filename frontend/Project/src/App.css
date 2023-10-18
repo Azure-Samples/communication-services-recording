@@ -1209,3 +1209,9 @@ div.volumeVisualizer::before {
 .dropdown-pos{
   float:right;
 }
+
+.recording-response{
+  background-color:lightgoldenrodyellow;
+  overflow-wrap: break-word;
+  color:black;
+}

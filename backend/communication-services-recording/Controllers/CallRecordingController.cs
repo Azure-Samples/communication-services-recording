@@ -39,10 +39,10 @@ namespace communication_services_recording.Controllers
                 var recordingEvent = new Event();
                 recordingEvent.Name = "StartRecording";
                 recordingEvent.StartTime = DateTime.UtcNow.ToString();
-                if (!string.IsNullOrWhiteSpace(recordingId))
-                {
-                    return Ok("recording already in progress");
-                }
+                //if (!string.IsNullOrWhiteSpace(recordingId))
+                //{
+                //    return Ok("recording already in progress");
+                //}
 
                 var recordingResult = await this.callRecordingService.StartRecording(recordingRequest);
                 recordingId = recordingResult.RecordingId;
@@ -153,8 +153,15 @@ namespace communication_services_recording.Controllers
             ArgumentException.ThrowIfNullOrEmpty(recordingRequest.ServerCallId);
             var recordingRespone = new RecordingResponse();
             recordingRespone.ServerCallId = recordingRequest.ServerCallId;
+            recordingRespone.CallConnectionId = recordingRequest.CallConnectionId;
+            var recordingEvent = new Event();
+            recordingEvent.Name = "StartRecording";
+            recordingEvent.StartTime = DateTime.UtcNow.ToString();
             var recordingResult = await this.callRecordingService.StartRecording(recordingRequest);
             recordingRespone.RecordingId = recordingResult.RecordingId;
+            recordingEvent.EndTime = DateTime.UtcNow.ToString();
+            recordingEvent.Response = JsonSerializer.Serialize(recordingResult);
+            recordingRespone.Events = new List<Event> { recordingEvent };
             return Ok(recordingRespone);
         }
 

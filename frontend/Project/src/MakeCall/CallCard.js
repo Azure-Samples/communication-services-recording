@@ -191,9 +191,7 @@ export default class CallCard extends React.Component {
             this.deviceManager.on('selectedMicrophoneChanged', () => {
                 this.setState({ selectedMicrophoneDeviceId: this.deviceManager.selectedMicrophone?.id });
             });
-            // const timeout = (delay) => {
-            //     return new Promise( res => setTimeout(res, delay) );
-            // }
+            
             const callStateChanged = () => {
                 console.log('Call state changed ', this.call.state);
                 if (this.call.state !== 'None' &&
@@ -226,12 +224,20 @@ export default class CallCard extends React.Component {
                                    localStorage.setItem('downloadPath',`${res.recordingId}.${recordingFormat}`)
                                    if(res && res.recordingId){
                                     try{
+                                        const startTime = new Date();
+                                        const playStartTime = startTime.toLocaleTimeString()
+                                        const updatedLog = { ...res, playStartTime};
+                                        this.setState({ recordingResponse: updatedLog });
                                         this.handleOutgoingAudioEffect();
-                                    setTimeout(() => {
-                                        this.handleOutgoingAudioEffect();
-                                        this.handleStopRecording();
-                                        this.call.hangUp();
-                                      }, 10000);
+                                        setTimeout(() => {
+                                            this.handleOutgoingAudioEffect();
+                                            const endTime = new Date();
+                                            const playEndTime = endTime.toLocaleTimeString()
+                                            const endLog = { ...updatedLog, playEndTime};
+                                            this.setState({ recordingResponse: endLog });
+                                            this.handleStopRecording();
+                                            this.call.hangUp();
+                                        }, 10000);
                                     }catch(error){
                                         console.log(error);
                                     }
@@ -241,29 +247,6 @@ export default class CallCard extends React.Component {
                                     console.error('Error recording call:', error);
                                 });
                         }
-
-                        // if (this.isRecordCall && this.call.tsCall.conversationType ==='groupCall' && this.call.remoteParticipants.length === 0) {
-                        //     recordingService.recordCall(recordRequest)
-                        //         .then(res => {
-                        //             this.setState({ recordingResponse: res });
-                        //             this.setState({recordingId: res.recordingId})
-                        //            if(res && res.recordingId){
-                        //             try{
-                        //                 this.handleOutgoingAudioEffect();
-                        //             setTimeout(() => {
-                        //                 this.handleOutgoingAudioEffect();
-                        //                 this.handleStopRecording();
-                        //               }, 10000);
-                        //             }catch(error){
-                        //                 console.log(error);
-                        //             }
-                        //            }
-                        //         })
-                        //         .catch(error => {
-                        //             console.error('Error recording call:', error);
-                        //         });
-                        // }
-
                     }).catch(err => {
                         console.log(err);
                     });
@@ -1034,7 +1017,11 @@ export default class CallCard extends React.Component {
                 .then(res => {
                     this.setState({ recordingResponse: res });
                     this.setState({ recordingId: res.recordingId });
+                    localStorage.setItem('downloadPath',`${res.recordingId}.${recordingFormat}`)
                     this.setState({ isRecordingActive: true });
+                    const recordingStuatus = 'Started';
+                    const updatedLog = { ...res, recordingStuatus};
+                    this.setState({ recordingResponse: updatedLog });
                 })
                 .catch(error => {
                     console.error('Error recording call:', error);
@@ -1049,6 +1036,10 @@ export default class CallCard extends React.Component {
         const res = await recordingService.pauseRecording(recordingId);
         if (res) {
             this.setState({ isRecordingPaused: true });
+            const recordingStuatus = 'Paused';
+            const recordingResponse = this.state.recordingResponse;
+            const updatedLog = { ...recordingResponse, recordingStuatus};
+            this.setState({ recordingResponse: updatedLog });
         }
     }
     handleResumeRecording = async () => {
@@ -1056,6 +1047,10 @@ export default class CallCard extends React.Component {
         const res = await recordingService.resumeRecording(recordingId);
         if (res) {
             this.setState({ isRecordingPaused: false });
+            const recordingStuatus = 'Resumed';
+            const recordingResponse = this.state.recordingResponse;
+            const updatedLog = { ...recordingResponse, recordingStuatus};
+            this.setState({ recordingResponse: updatedLog });
         }
     }
     handleStopRecording = async () => {
@@ -1063,6 +1058,10 @@ export default class CallCard extends React.Component {
         const res = await recordingService.stopRecording(recordingId);
         if (res) {
             this.setState({ isRecordingActive: false });
+            const recordingStuatus = 'Stopped';
+            const recordingResponse = this.state.recordingResponse;
+            const updatedLog = { ...recordingResponse, recordingStuatus};
+            this.setState({ recordingResponse: updatedLog });
         }
     }
 
@@ -1079,12 +1078,15 @@ export default class CallCard extends React.Component {
             <div className="ms-Grid mt-2">
                 {this.state.recordingResponse &&
 
-                    <div>
+                    <div className="recording-response">
                         <h2>Rcording Response:</h2>
                         <div>
+                            {this.state.recordingResponse.recordingStuatus && <div>Recording Stauts: {this.state.recordingResponse.recordingStuatus}</div>}
                             <div>Call Connection ID: {this.state.recordingResponse.callConnectionId}</div>
                             <div>Server Call ID: {this.state.recordingResponse.serverCallId}</div>
                             <div>Recording ID: {this.state.recordingResponse.recordingId}</div>
+                            {this.state.recordingResponse.playStartTime && <div>Play Start Time: {this.state.recordingResponse.playStartTime}</div>}
+                            {this.state.recordingResponse.playEndTime && <div>Play End Time: {this.state.recordingResponse.playEndTime}</div>}
                             {this.state.recordingResponse.error && <div>Error Message: {this.state.recordingResponse.error.message}</div>}
                             {this.state.recordingResponse.error && <div>Error Stack Trace: {this.state.recordingResponse.error.stacktrace}</div>}
                             {this.state.recordingResponse.events && <div>
