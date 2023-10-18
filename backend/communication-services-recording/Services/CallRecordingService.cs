@@ -69,7 +69,7 @@ namespace communication_services_recording.Services
         {
             try
             {
-               return await this.callAutomationClient.GetCallRecording().StopAsync(recordingId);
+                return await this.callAutomationClient.GetCallRecording().StopAsync(recordingId);
             }
             catch (Exception ex)
             {
@@ -104,18 +104,19 @@ namespace communication_services_recording.Services
             }
         }
 
-        public async Task<dynamic> RecordingPath(string recordingId)
+        public async Task<Dictionary<string,string>> RecordingPath(string recordingId)
         {
-            var state = await this.callAutomationClient.GetCallRecording().GetStateAsync(recordingId);
-            if(state.Value is not null)
+            try
             {
-                if (state.Value.Equals("inactive"))
-                {
-                    //TODO need to finish this logic
-                   
-                }
+                var result = new Dictionary<string, string>();
+                string recordingFilePath = $"{Directory.GetCurrentDirectory()}\\{recordingId}";
+                result.Add("recordingFilePath", recordingFilePath);
+                return result;
             }
-            return state;
+            catch (Exception)
+            {
+                throw;
+            }
         }
     }
 }

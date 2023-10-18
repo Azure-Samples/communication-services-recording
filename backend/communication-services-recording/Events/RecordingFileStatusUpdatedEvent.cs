@@ -1,9 +1,12 @@
-﻿namespace communication_services_recording.Events
+﻿using System.Globalization;
+
+namespace communication_services_recording.Events
 {
     public class RecordingFileStatusUpdatedEvent
     {
         public RecordingStorageInfo recordingStorageInfo { get; set; }
         public string recordingStartTime { get; set; }
+        public string Subject { get; set; }
     }
 
     public class RecordingChunk
