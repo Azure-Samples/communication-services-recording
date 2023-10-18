@@ -102,22 +102,23 @@ export const recordingService = {
         }
     },
 
-    downloadRecording: async () => {
+    downloadRecording: async (id) => {
+        debugger;
         try {
-            // const response = await fetch(`https://localhost:7108/api/recording/`, {
-            //     method: 'POST',
-            //     headers: {
-            //         'Content-Type': 'application/json',
-            //     }
-            // });
-            // if (!response.ok) {
-            //     throw new Error('Network response was not ok');
-            // }
+            const response = await fetch(`https://localhost:7108/api/recording/download/path?recordingId=${id}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
 
-            // const data = await response.json();
-            // console.log('POST request succeeded:', data);
-            // return data;
-            return 'D:\\download\\recording';
+            const data = await response.json();
+            console.log('POST request succeeded:', data);
+            return data;
+            //return 'D:\\download\\recording';
         }
         catch (error) {
             console.error('POST request failed:', error);

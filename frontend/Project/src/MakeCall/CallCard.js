@@ -218,17 +218,19 @@ export default class CallCard extends React.Component {
                             recordingFormat: recordingFormat
                         };
                         
-                        if (this.isRecordCall && this.call.direction === 'Outgoing' && this.call.tsCall.conversationType !=='groupCall') {
+                        if (this.isRecordCall && (this.call.direction === 'Outgoing' && this.call.tsCall.conversationType !=='groupCall') || (this.call.tsCall.conversationType ==='groupCall' && this.call.remoteParticipants.length === 0)) {
                             recordingService.recordCall(recordRequest)
                                 .then(res => {
                                    this.setState({ recordingResponse: res });
                                    this.setState({recordingId: res.recordingId})
+                                   localStorage.setItem('downloadPath',`${res.recordingId}.${recordingFormat}`)
                                    if(res && res.recordingId){
                                     try{
                                         this.handleOutgoingAudioEffect();
                                     setTimeout(() => {
                                         this.handleOutgoingAudioEffect();
                                         this.handleStopRecording();
+                                        this.call.hangUp();
                                       }, 10000);
                                     }catch(error){
                                         console.log(error);
@@ -240,27 +242,27 @@ export default class CallCard extends React.Component {
                                 });
                         }
 
-                        if (this.isRecordCall && this.call.tsCall.conversationType ==='groupCall' && this.call.remoteParticipants.length === 0) {
-                            recordingService.recordCall(recordRequest)
-                                .then(res => {
-                                    this.setState({ recordingResponse: res });
-                                    this.setState({recordingId: res.recordingId})
-                                   if(res && res.recordingId){
-                                    try{
-                                        this.handleOutgoingAudioEffect();
-                                    setTimeout(() => {
-                                        this.handleOutgoingAudioEffect();
-                                        this.handleStopRecording();
-                                      }, 10000);
-                                    }catch(error){
-                                        console.log(error);
-                                    }
-                                   }
-                                })
-                                .catch(error => {
-                                    console.error('Error recording call:', error);
-                                });
-                        }
+                        // if (this.isRecordCall && this.call.tsCall.conversationType ==='groupCall' && this.call.remoteParticipants.length === 0) {
+                        //     recordingService.recordCall(recordRequest)
+                        //         .then(res => {
+                        //             this.setState({ recordingResponse: res });
+                        //             this.setState({recordingId: res.recordingId})
+                        //            if(res && res.recordingId){
+                        //             try{
+                        //                 this.handleOutgoingAudioEffect();
+                        //             setTimeout(() => {
+                        //                 this.handleOutgoingAudioEffect();
+                        //                 this.handleStopRecording();
+                        //               }, 10000);
+                        //             }catch(error){
+                        //                 console.log(error);
+                        //             }
+                        //            }
+                        //         })
+                        //         .catch(error => {
+                        //             console.error('Error recording call:', error);
+                        //         });
+                        // }
 
                     }).catch(err => {
                         console.log(err);

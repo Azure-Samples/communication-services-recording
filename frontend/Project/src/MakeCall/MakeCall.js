@@ -148,21 +148,33 @@ export default class MakeCall extends React.Component {
 
                     incomingCall.on('callEnded', args => {
                         this.displayCallEndReason(args.callEndReason);
-                        
-                        const downloadContent = () => {
-                            recordingService.downloadRecording()
+                        const downloadPath = localStorage.getItem('downloadPath');
+                        recordingService.downloadRecording(downloadPath)
                                 .then(res => {
+                                    debugger;
                                     this.setState({downloadContentResponse:res})
-                                    if(this.state.downloadContentResponse){
-                                        clearInterval(apiIntervalId);
-                                    }
+                                    // if(this.state.downloadContentResponse){
+                                    //     clearInterval(apiIntervalId);
+                                    // }
                                 })
                                 .catch(error => {
                                     console.error('Error', error);
                                 });
-                        };
-                        downloadContent();
-                        const apiIntervalId = setInterval(downloadContent, 60000);
+
+                        // const downloadContent = () => {
+                        //     recordingService.downloadRecording()
+                        //         .then(res => {
+                        //             this.setState({downloadContentResponse:res})
+                        //             if(this.state.downloadContentResponse){
+                        //                 clearInterval(apiIntervalId);
+                        //             }
+                        //         })
+                        //         .catch(error => {
+                        //             console.error('Error', error);
+                        //         });
+                        // };
+                        // downloadContent();
+                        // const apiIntervalId = setInterval(downloadContent, 60000);
                     });
                 });
                 this.setState({ loggedIn: true });
