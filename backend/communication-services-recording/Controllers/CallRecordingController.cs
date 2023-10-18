@@ -187,7 +187,7 @@ namespace communication_services_recording.Controllers
         public async Task<IActionResult> GetRecordingPath(string recordingId)
         {
             var response = await this.callRecordingService.RecordingPath(recordingId);
-            return Ok();
+            return Ok(response);
         }
     }
 }

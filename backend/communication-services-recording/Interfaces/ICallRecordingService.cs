@@ -11,6 +11,6 @@ namespace communication_services_recording.Interfaces
         Task<Response> StopRecording(string recordingId);
         Task PauseRecording(string recordingId);
         Task ResumeRecording(string recordingId);
-        Task<dynamic> RecordingPath(string recordingId);
+        Task<Dictionary<string,string>> RecordingPath(string recordingId);
     }
 }

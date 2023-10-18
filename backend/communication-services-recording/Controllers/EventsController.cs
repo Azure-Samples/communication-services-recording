@@ -1,6 +1,8 @@
 ﻿using Azure.Messaging;
 using Newtonsoft.Json.Linq;
+using System;
 using System.Reflection.Metadata;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace communication_services_recording.Controllers
 {
@@ -67,6 +69,10 @@ namespace communication_services_recording.Controllers
                         string contentLocation = string.Empty;
                         string documentId = string.Empty;
                         string metadataLocation = string.Empty;
+                        string recordingId = eventGridEvent.Subject;
+                        string recordingValue = string.Empty;
+                        recordingValue = GetRecordingId(recordingId);
+
                         foreach (var recordingInfo in recordingFileStatusEvent?.recordingStorageInfo?.recordingChunks)
                         {
                             contentLocation = recordingInfo.contentLocation;
@@ -74,11 +80,23 @@ namespace communication_services_recording.Controllers
                             metadataLocation = recordingInfo.metadataLocation;
                         }
 
-                        await DownloadRecording(contentLocation, metadataLocation, documentId);
+                        await DownloadRecording(contentLocation, metadataLocation, recordingValue);
                         break;
                 }
             }
             return Ok();
+        }
+
+        private static string GetRecordingId(string recordingId)
+        {
+            string recordingValue = string.Empty;
+            string[] parts = recordingId.Split('/');
+            if (parts.Length > 0)
+            {
+                recordingValue = parts[parts.Length - 1];
+            }
+
+            return recordingValue;
         }
 
         /* Route for Azure Communication Service eventgrid webhooks*/
@@ -101,11 +119,11 @@ namespace communication_services_recording.Controllers
             eventProcessor.ProcessEvents(cloudEvents);
             return Ok();
         }
-        private async Task DownloadRecording(string contentLocation, string metadataLocation, string documentId)
+        private async Task DownloadRecording(string contentLocation, string metadataLocation, string recordingId)
         {
             var recordingDownloadUri = new Uri(contentLocation);
             string format = await GetFormat(metadataLocation);
-            await this.callAutomationClient.GetCallRecording().DownloadToAsync(recordingDownloadUri, $"{documentId}.{format}");
+            await this.callAutomationClient.GetCallRecording().DownloadToAsync(recordingDownloadUri, $"{recordingId}.{format}");
         }
 
         private async Task<string> GetFormat(string metadataLocation)
