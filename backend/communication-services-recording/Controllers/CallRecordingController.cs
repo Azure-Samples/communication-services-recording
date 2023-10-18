@@ -46,6 +46,10 @@ namespace communication_services_recording.Controllers
 
                 var recordingResult = await this.callRecordingService.StartRecording(recordingRequest);
                 recordingId = recordingResult.RecordingId;
+
+                // Play prompt(Uncomment this method to test the play prompt flow)
+                //await this.callRecordingService.PlayPromptToCustomerAndResumeRecording(recordingId, recordingRespone.CallConnectionId);
+
                 recordingRespone.RecordingId = recordingResult.RecordingId;
                 recordingEvent.EndTime = DateTime.UtcNow.ToString();
                 recordingEvent.Response = JsonSerializer.Serialize(recordingResult);
@@ -90,7 +94,7 @@ namespace communication_services_recording.Controllers
                 //}
 
                 var recordingResult = await this.callRecordingService.StartRecording(recordingRequest);
-                recordingId   = recordingResult.RecordingId;
+                recordingId = recordingResult.RecordingId;
                 recordingRespone.RecordingId = recordingResult.RecordingId;
                 recordingEvent.EndTime = DateTime.UtcNow.ToString();
                 recordingEvent.Response = JsonSerializer.Serialize(recordingResult);

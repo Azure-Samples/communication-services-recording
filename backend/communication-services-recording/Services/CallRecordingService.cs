@@ -1,6 +1,7 @@
 ﻿
 
 using Azure;
+using communication_services_recording.Models;
 
 namespace communication_services_recording.Services
 {
@@ -117,6 +118,49 @@ namespace communication_services_recording.Services
             {
                 throw;
             }
+        }
+
+        public async Task PlayPromptToCustomerAndResumeRecording(string recordingId, string callConnectionId)
+        {
+            // NOTE: Using same audio file for testing
+            var callConnection = this.callAutomationClient.GetCallConnection(callConnectionId);
+            
+            // Pause recording and play prompt
+            await PauseRecording(recordingId);
+
+            // Play Prompt
+            var playResult = await PlayPromptToCustomer(callConnection);
+            if(playResult?.IsSuccess != null)
+            {
+                // Resume Recording
+                await ResumeRecordingAndPlayBeep(recordingId, callConnection);
+            }
+        }
+
+        private async Task ResumeRecordingAndPlayBeep(string recordingId, CallConnection callConnection)
+        {
+            await ResumeRecording(recordingId);
+            // play audio file
+            var resumeMedia = callConnection.GetCallMedia();
+            var resumePlaySource = new FileSource(new Uri("https://voiceage.com/wbsamples/in_mono/Chorus.wav"));
+            // play audio file
+            var resumePlayEvent = new Event();
+            resumePlayEvent.Name = "PlayToAll";
+            resumePlayEvent.StartTime = DateTime.UtcNow.ToString();
+            PlayResult resumePlayplayResult = await resumeMedia.PlayToAllAsync(resumePlaySource);
+        }
+
+        private async Task<PlayEventResult> PlayPromptToCustomer(CallConnection callConnection)
+        {
+            var media = callConnection.GetCallMedia();
+            var playSource = new FileSource(new Uri("https://voiceage.com/wbsamples/in_mono/Chorus.wav"));
+            // play audio file
+            var playEvent = new Event();
+            playEvent.Name = "PlayToAll";
+            playEvent.StartTime = DateTime.UtcNow.ToString();
+            PlayResult playResult = await media.PlayToAllAsync(playSource);
+            PlayEventResult playEventResult = await playResult.WaitForEventProcessorAsync();
+            return playEventResult;
         }
     }
 }
