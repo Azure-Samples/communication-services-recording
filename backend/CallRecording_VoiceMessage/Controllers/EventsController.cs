@@ -106,10 +106,8 @@ namespace CallRecording_VoiceMessage.Controllers
                     }
                     this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
                     {
-                        if (!string.IsNullOrWhiteSpace(recordingId))
-                        {
-                            Console.Beep();
-                        }
+                        logger.LogInformation($"Play completed event received for connection id: {playCompletedEvent.CallConnectionId}");
+                        Console.Beep();
                     });
                     this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayFailed>(answerCallResult.CallConnection.CallConnectionId, async (playFailedEvent) =>
                     {
@@ -117,7 +115,6 @@ namespace CallRecording_VoiceMessage.Controllers
                         var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
                         var resultInformation = playFailedEvent.ResultInformation;
                         logger.LogError("Encountered error during play, message={msg}, code={code}, subCode={subCode}", resultInformation?.Message, resultInformation?.Code, resultInformation?.SubCode);
-
                     });
                 }
 
