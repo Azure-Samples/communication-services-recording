@@ -1199,6 +1199,7 @@ div.volumeVisualizer::before {
     border: 1px solid gray;
     margin-right: 5px;
     margin-top:20px;
+    cursor: pointer;
 }
 
     .record-buttons:hover {
@@ -1214,4 +1215,8 @@ div.volumeVisualizer::before {
   background-color:lightgoldenrodyellow;
   overflow-wrap: break-word;
   color:black;
+}
+
+.recording-notify{
+  color:brown;
 }
