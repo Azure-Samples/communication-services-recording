@@ -38,11 +38,75 @@ export default class RecordConstraint extends React.Component {
             this.setState({
                 recordingContent: item.key
             });
+
+            if(recordConstraints.recordingContent === 'audio'){
+                this.recordingChannelConstraints = [
+                    { key: 'mixed', text: 'mixed' },
+                    { key: 'unmixed', text: 'unmixed' },
+                ];
+                this.recordingFormatContraints = [
+                    { key: 'wav', text: 'wav' },
+                    { key: 'mp3', text: 'mp3' },
+                ];
+
+                recordConstraints.recordingChannel = 'unmixed';
+                recordConstraints.recordingFormat = 'wav'
+                this.setState({
+                    recordingChannel: recordConstraints.recordingChannel,
+                    recordingFormat:recordConstraints.recordingFormat
+                });
+            }
+
+            if(recordConstraints.recordingContent === 'audioVideo'){
+                this.recordingChannelConstraints = [
+                    { key: 'mixed', text: 'mixed' },
+                ];
+                this.recordingFormatContraints = [
+                    { key: 'mp4', text: 'mp4' },
+                ];
+                recordConstraints.recordingChannel = 'mixed';
+                recordConstraints.recordingFormat = 'mp4'
+                this.setState({
+                    recordingChannel: recordConstraints.recordingChannel,
+                    recordingFormat:recordConstraints.recordingFormat
+                });
+
+            }
         } else if (event.target.id === 'recordingChannelDropdown') {
             recordConstraints.recordingChannel = item.key;
             this.setState({
                 recordingChannel: item.key
             });
+            console.log(this.state.recordingContent);
+            if(this.state.recordingContent === 'audioVideo' && recordConstraints.recordingChannel === 'mixed'){
+                this.recordingFormatContraints = [
+                    { key: 'mp4', text: 'mp4' },
+                ];
+                recordConstraints.recordingChannel = 'mixed';
+                recordConstraints.recordingFormat = 'mp4'
+                this.setState({
+                    recordingChannel: recordConstraints.recordingChannel,
+                    recordingFormat:recordConstraints.recordingFormat
+                });
+            }
+            if(this.state.recordingContent === 'audio' && recordConstraints.recordingChannel === 'mixed'){
+                this.recordingFormatContraints = [
+                    { key: 'wav', text: 'wav' },
+                    { key: 'mp3', text: 'mp3' },
+                ];
+            }
+
+            if(this.state.recordingContent === 'audio' && recordConstraints.recordingChannel === 'unmixed'){
+                this.recordingFormatContraints = [
+                    { key: 'wav', text: 'wav' },
+                ];
+
+                recordConstraints.recordingFormat = 'wav'
+                this.setState({
+                    recordingChannel: recordConstraints.recordingChannel,
+                    recordingFormat:recordConstraints.recordingFormat
+                });
+            }
         } else if (event.target.id === 'recordingFormatDropdown') {
             recordConstraints.recordingFormat = item.key;
             this.setState({

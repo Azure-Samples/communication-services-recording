@@ -16,6 +16,7 @@ import RecordConstraint from './RecordConstraint';
 import { setLogLevel, AzureLogger } from '@azure/logger';
 import { recordingService } from "../Utils/RecordingService";
 import { inflate } from 'pako';
+import '../App.css';
 export default class MakeCall extends React.Component {
     constructor(props) {
         super(props);
@@ -148,21 +149,30 @@ export default class MakeCall extends React.Component {
 
                     incomingCall.on('callEnded', args => {
                         this.displayCallEndReason(args.callEndReason);
-                        
-                        const downloadContent = () => {
-                            recordingService.downloadRecording()
+                        const downloadPath = localStorage.getItem('downloadPath');
+                        recordingService.downloadRecording(downloadPath)
                                 .then(res => {
-                                    this.setState({downloadContentResponse:res})
-                                    if(this.state.downloadContentResponse){
-                                        clearInterval(apiIntervalId);
-                                    }
+                                    debugger;
+                                    this.setState({downloadContentResponse:JSON.stringify(res)})
                                 })
                                 .catch(error => {
                                     console.error('Error', error);
                                 });
-                        };
-                        downloadContent();
-                        const apiIntervalId = setInterval(downloadContent, 60000);
+
+                        // const downloadContent = () => {
+                        //     recordingService.downloadRecording()
+                        //         .then(res => {
+                        //             this.setState({downloadContentResponse:res})
+                        //             if(this.state.downloadContentResponse){
+                        //                 clearInterval(apiIntervalId);
+                        //             }
+                        //         })
+                        //         .catch(error => {
+                        //             console.error('Error', error);
+                        //         });
+                        // };
+                        // downloadContent();
+                        // const apiIntervalId = setInterval(downloadContent, 60000);
                     });
                 });
                 this.setState({ loggedIn: true });
@@ -341,7 +351,7 @@ export default class MakeCall extends React.Component {
 
         return (
             <div>
-                {this.state.downloadContentResponse && <div><h2>Downloaded recording path:- {this.state.downloadContentResponse}</h2></div>}
+                {this.state.downloadContentResponse && <div className="recording-response"><h3>Downloaded recording path:- {this.state.downloadContentResponse}</h3></div>}
                 <Login onLoggedIn={this.handleLogIn} ref={this.logInComponentRef}/>
                 <div className="card">
                     <div className="ms-Grid">
