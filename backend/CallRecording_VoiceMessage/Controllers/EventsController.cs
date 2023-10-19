@@ -35,7 +35,7 @@ namespace CallRecording_VoiceMessage.Controllers
             this.callAutomationClient = callAutomationClient;
             this.logger = logger;
             this.configuration = configuration;
-            
+
         }
 
         [HttpPost]
@@ -92,21 +92,24 @@ namespace CallRecording_VoiceMessage.Controllers
                     {
                         logger.LogInformation($"Call connected event received for connection id: {answer_result.SuccessResult.CallConnectionId}");
                         var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
-                        var task1 = HandleVoiceMessageNoteAsync(callConnectionMedia, answer_result.SuccessResult.CallConnectionId);
+                        var playTask = HandleVoiceMessageNoteAsync(callConnectionMedia, answer_result.SuccessResult.CallConnectionId);
                         StartRecordingOptions recordingOptions = new StartRecordingOptions(new ServerCallLocator(answer_result.SuccessResult.ServerCallId))
                         {
                             RecordingContent = RecordingContent.Audio,
                             RecordingChannel = RecordingChannel.Unmixed,
                             RecordingFormat = RecordingFormat.Wav
                         };
-                        var task2 = this.callAutomationClient.GetCallRecording().StartAsync(recordingOptions);
-                        await Task.WhenAll(task1, task2);
-                        recordingId = task2.Result.Value.RecordingId;
+                        var recordingTask = this.callAutomationClient.GetCallRecording().StartAsync(recordingOptions);
+                        await Task.WhenAll(playTask, recordingTask);
+                        recordingId = recordingTask.Result.Value.RecordingId;
+                        logger.LogInformation($"Call recording id: {recordingId}");
                     }
                     this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
                     {
-                        logger.LogInformation($"Call recording id: {recordingId}");
-                        Console.Beep();
+                        if (!string.IsNullOrWhiteSpace(recordingId))
+                        {
+                            Console.Beep();
+                        }
                     });
                     this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayFailed>(answerCallResult.CallConnection.CallConnectionId, async (playFailedEvent) =>
                     {
