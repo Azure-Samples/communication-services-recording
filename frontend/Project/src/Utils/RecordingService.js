@@ -1,7 +1,10 @@
+
+const BASE_URL = "https://localhost:7108";
+
 export const recordingService = {
     recordCall: async (recordRequest) => {
         try {
-            const response = await fetch('https://localhost:7108/api/recording/initiateRecording', {
+            const response = await fetch(`${BASE_URL}/api/recording/initiateRecording`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -24,7 +27,7 @@ export const recordingService = {
 
     startRecording: async (recordRequest) => {
         try {
-            const response = await fetch('https://localhost:7108/api/recording/start', {
+            const response = await fetch(`${BASE_URL}/api/recording/start`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -47,7 +50,7 @@ export const recordingService = {
 
     pauseRecording: async (id) => {
         try {
-            const response = await fetch(`https://localhost:7108/api/recording/pause?recordingId=${id}`, {
+            const response = await fetch(`${BASE_URL}/api/recording/pause?recordingId=${id}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -66,7 +69,7 @@ export const recordingService = {
 
     resumeRecording: async (id) => {
         try {
-            const response = await fetch(`https://localhost:7108/api/recording/resume?recordingId=${id}`, {
+            const response = await fetch(`${BASE_URL}/api/recording/resume?recordingId=${id}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -85,7 +88,7 @@ export const recordingService = {
 
     stopRecording: async (id) => {
         try {
-            const response = await fetch(`https://localhost:7108/api/recording/stop?recordingId=${id}`, {
+            const response = await fetch(`${BASE_URL}/api/recording/stop?recordingId=${id}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -104,7 +107,7 @@ export const recordingService = {
 
     downloadRecording: async (id) => {
         try {
-            const response = await fetch(`https://localhost:7108/api/recording/download/path?recordingId=${id}`, {
+            const response = await fetch(`${BASE_URL}/api/recording/download/path?recordingId=${id}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',

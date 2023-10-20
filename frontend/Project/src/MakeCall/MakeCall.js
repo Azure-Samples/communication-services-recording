@@ -55,7 +55,8 @@ export default class MakeCall extends React.Component {
             identityMri: undefined,
             recordCallConstraint: null,
             isRecord: true,
-            downloadContentResponse:undefined
+            downloadContentResponse:undefined,
+            recordingResponse : undefined
         };
 
         setInterval(() => {
@@ -136,6 +137,22 @@ export default class MakeCall extends React.Component {
                         if (this.state.call && this.state.call === call) {
                             this.displayCallEndReason(this.state.call.callEndReason);
                         }
+
+                        const data = localStorage.getItem('recordingResponse');
+                        const recordingResponse = JSON.parse(data);
+                        this.setState({recordingResponse : recordingResponse})
+
+                        const downloadPath = localStorage.getItem('downloadPath');
+                        if(downloadPath !== null || downloadPath !== undefined){
+                            recordingService.downloadRecording(downloadPath)
+                            .then(res => {
+                                this.setState({downloadContentResponse:JSON.stringify(res)})
+                            })
+                            .catch(error => {
+                                console.error('Error', error);
+                            });
+                        }
+                        
                     });
                 });
                 this.callAgent.on('incomingCall', args => {
@@ -149,30 +166,6 @@ export default class MakeCall extends React.Component {
 
                     incomingCall.on('callEnded', args => {
                         this.displayCallEndReason(args.callEndReason);
-                        const downloadPath = localStorage.getItem('downloadPath');
-                        recordingService.downloadRecording(downloadPath)
-                                .then(res => {
-                                    debugger;
-                                    this.setState({downloadContentResponse:JSON.stringify(res)})
-                                })
-                                .catch(error => {
-                                    console.error('Error', error);
-                                });
-
-                        // const downloadContent = () => {
-                        //     recordingService.downloadRecording()
-                        //         .then(res => {
-                        //             this.setState({downloadContentResponse:res})
-                        //             if(this.state.downloadContentResponse){
-                        //                 clearInterval(apiIntervalId);
-                        //             }
-                        //         })
-                        //         .catch(error => {
-                        //             console.error('Error', error);
-                        //         });
-                        // };
-                        // downloadContent();
-                        // const apiIntervalId = setInterval(downloadContent, 60000);
                     });
                 });
                 this.setState({ loggedIn: true });
@@ -194,6 +187,8 @@ export default class MakeCall extends React.Component {
 
     placeCall = async (withVideo) => {
         try {
+            this.setState({recordingResponse : undefined})
+            this.setState({downloadContentResponse:undefined})
             let identitiesToCall = [];
             const userIdsArray = this.destinationUserIds.value.split(',');
 
@@ -223,6 +218,8 @@ export default class MakeCall extends React.Component {
 
     joinGroup = async (withVideo) => {
         try {
+            this.setState({recordingResponse : undefined});
+            this.setState({downloadContentResponse:undefined});
             const callOptions = await this.getCallOptions({video: withVideo, micMuted: false});
             this.callAgent.join({ groupId: this.destinationGroup.value }, callOptions);
         } catch (e) {
@@ -351,7 +348,38 @@ export default class MakeCall extends React.Component {
 
         return (
             <div>
-                {this.state.downloadContentResponse && <div className="recording-response"><h3>Downloaded recording path:- {this.state.downloadContentResponse}</h3></div>}
+                {this.state.downloadContentResponse && !this.state.incomingCall && !this.state.call && <div className="recording-response"><h3>Downloaded recording path:- {this.state.downloadContentResponse}</h3></div>}
+                {this.state.recordingResponse && !this.state.incomingCall && !this.state.call &&
+                    <div className="recording-response">
+                        <h2>Recording Response:</h2>
+                        <div>
+                            {this.state.recordingResponse.recordingStuatus && <div>Recording Status: {this.state.recordingResponse.recordingStuatus}</div>}
+                            {this.state.recordingResponse.recordingDelay && <div>Recording start Delay: {this.state.recordingResponse.recordingDelay}</div>}
+                            <div>Call Connection ID: {this.state.recordingResponse.callConnectionId}</div>
+                            <div>Server Call ID: {this.state.recordingResponse.serverCallId}</div>
+                            <div>Recording ID: {this.state.recordingResponse.recordingId}</div>
+                            {this.state.recordingResponse.playStartTime && <div>Play Start Time: {this.state.recordingResponse.playStartTime}</div>}
+                            {this.state.recordingResponse.playEndTime && <div>Play End Time: {this.state.recordingResponse.playEndTime}</div>}
+                            {this.state.recordingResponse.error && <div>Error Message: {this.state.recordingResponse.error.message}</div>}
+                            {this.state.recordingResponse.error && <div>Error Stack Trace: {this.state.recordingResponse.error.stacktrace}</div>}
+                            {this.state.recordingResponse.events && <div>
+                                <h3>Events:</h3>
+                                <ul>
+                                    {this.state.recordingResponse.events && this.state.recordingResponse.events.map((event, index) => (
+                                        <li key={index}>
+                                            <div>Name: {event.name}</div>
+                                            <div>Start Time: {event.startTime}</div>
+                                            <div>End Time: {event.endTime}</div>
+                                            <div>Response: {event.response}</div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                            }
+                        </div>
+                        <br></br>
+                    </div>
+                }
                 <Login onLoggedIn={this.handleLogIn} ref={this.logInComponentRef}/>
                 <div className="card">
                     <div className="ms-Grid">

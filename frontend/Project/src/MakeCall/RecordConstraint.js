@@ -16,8 +16,6 @@ export default class RecordConstraint extends React.Component {
         ];
         this.recordingFormatContraints = [
             { key: 'wav', text: 'wav' },
-            { key: 'mp3', text: 'mp3' },
-            { key: 'mp4', text: 'mp4' },
         ];
         this.state = {
             recordingContent: 'audio',
@@ -77,7 +75,7 @@ export default class RecordConstraint extends React.Component {
             this.setState({
                 recordingChannel: item.key
             });
-            console.log(this.state.recordingContent);
+            
             if(this.state.recordingContent === 'audioVideo' && recordConstraints.recordingChannel === 'mixed'){
                 this.recordingFormatContraints = [
                     { key: 'mp4', text: 'mp4' },
