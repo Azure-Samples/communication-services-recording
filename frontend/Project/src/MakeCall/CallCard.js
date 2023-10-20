@@ -235,8 +235,12 @@ export default class CallCard extends React.Component {
                                             const playEndTime = endTime.toLocaleTimeString()
                                             const endLog = { ...updatedLog, playEndTime};
                                             this.setState({ recordingResponse: endLog });
-                                            this.handleStopRecording();
-                                            this.call.hangUp();
+                                            this.handleStopRecording().then(r => {
+                                                if(r){
+                                                    this.call.hangUp();
+                                                }
+                                            });
+                                            
                                         }, 10000);
                                     }catch(error){
                                         console.log(error);
@@ -1063,6 +1067,8 @@ export default class CallCard extends React.Component {
             const updatedLog = { ...recordingResponse, recordingStuatus};
             this.setState({ recordingResponse: updatedLog });
         }
+
+        return res;
     }
 
     handleRecordConstraint = (constraints) => {
