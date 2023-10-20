@@ -1,5 +1,6 @@
 ﻿using System.Xml.Linq;
 using System.Xml;
+using Azure.Communication.CallAutomation;
 
 namespace communication_services_recording.Controllers
 {
@@ -7,6 +8,13 @@ namespace communication_services_recording.Controllers
     [ApiController]
     public class UtilityController : ControllerBase
     {
+        private readonly ILogger logger;
+
+        public UtilityController(ILogger<UtilityController> logger)
+        {
+            this.logger = logger;
+        }
+
         [HttpGet]
         [Route("get/sdk/version")]
         public async Task<ActionResult> GetPackageLatestVersion()
@@ -31,7 +39,7 @@ namespace communication_services_recording.Controllers
             }
             catch (XmlException e)
             {
-                Console.WriteLine($"Error parsing {projectFilePath}: {e.Message}");
+                this.logger.LogInformation($"Error parsing {projectFilePath}: {e.Message}");
             }
 
             return Ok(result);
