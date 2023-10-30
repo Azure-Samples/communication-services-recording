@@ -23,11 +23,12 @@ This project framework provides the following features:
 
 ### Prerequisites
 
-* An Azure account with active subscription
+* An Azure account with an active subscription. For details, see [Create an account for free](https://aka.ms/Mech-Azureaccount) 
 * Communication service
 * NPM
 * Node js
-* Dev tunnel
+* For local run: Install Azure Dev Tunnels CLI. For details, see [Create and host dev tunnel](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started?tabs=windows)
+* [.NET 7](https://dotnet.microsoft.com/download)
 
 ### Installation
 
