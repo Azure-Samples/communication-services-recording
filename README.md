@@ -64,7 +64,7 @@ This project framework provides the following features:
 ### Quickstart
 (Add steps to get up and running quickly)
 
-backend/communication-services-recording
+**backend/communication-services-recording**
 
 1. git clone [https://github.com/Azure-Samples/communication-services-recording.git](https://github.com/Azure-Samples/communication-services-recording.git)
 2. cd communication-services-recording
@@ -75,7 +75,7 @@ backend/communication-services-recording
     - "AcsKey": "<your Azure communication service connectionstring>"
 6. Follow the frontend and backend installation steps
    
-backend/CallRecording-VoiceMessage
+**backend/CallRecording-VoiceMessage**
 
 1. git clone [https://github.com/Azure-Samples/communication-services-recording.git](https://github.com/Azure-Samples/communication-services-recording.git)
 2. Update the below properties on the backend/CallRecording_VoiceMessage/appsettings.json
