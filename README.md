@@ -100,4 +100,4 @@ This project framework provides the following features:
 ## Resources
 
 * used webcalling sample as base for the UI https://github.com/Azure-Samples/communication-services-web-calling-tutorial/blob/main/README.md
-* Backend used the recording quick starts https://github.com/Azure-Samples/communication-services-web-calling-tutorial/blob/main/README.md
+* Backend used the recording quick starts https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/voice-video-calling/get-started-call-recording?pivots=programming-language-csharp
