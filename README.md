@@ -23,11 +23,18 @@ This project framework provides the following features:
 
 ### Prerequisites
 
-* An Azure account with active subscription
+* An Azure account with an active subscription. For details, see [Create an account for free](https://aka.ms/Mech-Azureaccount) 
 * Communication service
 * NPM
 * Node js
-* Dev tunnel
+* For local run: Install Azure Dev Tunnels CLI. For details, see [Create and host dev tunnel](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started?tabs=windows)
+* [.NET 7](https://dotnet.microsoft.com/download)
+* [Cognitive Service ](https://learn.microsoft.com/en-us/azure/search/search-create-service-portal)
+
+### Code Structure
+* ./frontend is front end source code for the backend ./backend/communication-services-recording.
+* ./backend/communication-services-recording is backend which supports the features provided in feature sections.
+* ./backend/CallRecording_VoiceMessage is backend code which accepts the incoming call and starts the recordin, and play some text and stops the recording.
 
 ### Installation
 
@@ -37,21 +44,44 @@ This project framework provides the following features:
    * npm install
    * npm run build-local
    * npm run start-local
-3. Open provided localhost url from your terminal in the browser
+4. Open provided localhost url from your terminal in the browser
 
 **Backend**
-1. Create the devtunnel 
-2. Build the project from visual studio and run the project with your dev tunnel
+
+  1. ./backend/communication-services-recording
+     
+      * [Create and host dev tunnel](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started?tabs=windows)
+      * Build and run the project from visual studio or using "dotnet run" cli cmd
+    
+  2. ./backend/communication-services-recording
+
+      * [Create and host dev tunnel](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started?tabs=windows)
+      * Build and run the project from visual studio or using "dotnet run" cli cmd
+      * Please add the webhook for the event **"IncomingCall"** in your communication service events. make sure your webhook endpoint points to your devtunnel url https://{devtunnelurl}/api/events
 
 **Communication Service Events Setup**
-1. Please add the webhook for the event "RecordingFileStatusUpdated" in your communication service events. make sure your webhook endpoint points to your devtunnel url https://{devtunnelurl}/api/events
+1. Please add the webhook for the event **"RecordingFileStatusUpdated"** in your communication service events. make sure your webhook endpoint points to your devtunnel url https://{devtunnelurl}/api/events
 ### Quickstart
 (Add steps to get up and running quickly)
+
+**backend/communication-services-recording**
 
 1. git clone [https://github.com/Azure-Samples/communication-services-recording.git](https://github.com/Azure-Samples/communication-services-recording.git)
 2. cd communication-services-recording
 3. Update the connection string in the frontend/PROJECT/serverConfig.json
-4. Follow the frontend and backend installation steps 
+4. Update the below properties on the backend/communication-services-recording/appsettings.json
+    - "BaseUrl": "<your devtunnel url>"
+    - "AcsConnectionString": "<your Azure communication service connectionstring>"
+    - "AcsKey": "<your Azure communication service connectionstring>"
+6. Follow the frontend and backend installation steps
+   
+**backend/CallRecording-VoiceMessage**
+
+1. git clone [https://github.com/Azure-Samples/communication-services-recording.git](https://github.com/Azure-Samples/communication-services-recording.git)
+2. Update the below properties on the backend/CallRecording_VoiceMessage/appsettings.json
+   - "AcsConnectionString": "<your Azure communication service connectionstring>",
+   - "CognitiveServiceEndpoint": "<your cognitive service endpoint>",  
+
 
 ## Demo
 
@@ -70,4 +100,4 @@ This project framework provides the following features:
 ## Resources
 
 * used webcalling sample as base for the UI https://github.com/Azure-Samples/communication-services-web-calling-tutorial/blob/main/README.md
-* Backend used the recording quick starts https://github.com/Azure-Samples/communication-services-web-calling-tutorial/blob/main/README.md
+* Backend used the recording quick starts https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/voice-video-calling/get-started-call-recording?pivots=programming-language-csharp
