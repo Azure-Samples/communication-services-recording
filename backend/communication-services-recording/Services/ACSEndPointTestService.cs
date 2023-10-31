@@ -188,7 +188,7 @@ namespace communication_services_recording.Services
         }
         private string ComputeSignature(string stringToSign)
         {
-            string secret = configuration["AcsKey"];//"CoNkEgq4NOOEHUPtdqmchR8n7SwSFZLAAav6tLJShtIlxCie9jwnrXaUznUV9W4/uV60uaX5wB7ZKftfXvVHLg==";//resourceAccessKey
+            string secret = configuration["AcsKey"];
             using var hmacsha256 = new HMACSHA256(Convert.FromBase64String(secret));
             var bytes = Encoding.UTF8.GetBytes(stringToSign);
             var hashedBytes = hmacsha256.ComputeHash(bytes);
