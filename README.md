@@ -9,10 +9,10 @@ Call recording scenarios tool help to debug/demonstrate how to use the call reco
    * [Run application locally](https://github.com/Azure-Samples/communication-services-recording/blob/main/call-recording-scenarios/incoming-call-recording/README.md#running-the-application)
    
 3. [web-call-recording](https://github.com/Azure-Samples/communication-services-recording/blob/main/call-recording-scenarios/web-call-recording/README.md) - this tool will help to test the server side recording with the calling SDK UI. It does support audio and video recording for 1:1, 1:N and group calling. It has option for both manual and auto record testing
-   * Supported Features
-   * Pre-requisites
-   * Project Setup
-   * Run application locally
+   * [Supported Features](https://github.com/Azure-Samples/communication-services-recording/blob/main/call-recording-scenarios/web-call-recording/README.md#features)
+   * [Pre-requisites](https://github.com/Azure-Samples/communication-services-recording/blob/main/call-recording-scenarios/web-call-recording/README.md#prerequisites)
+   * [Project Setup](https://github.com/Azure-Samples/communication-services-recording/blob/main/call-recording-scenarios/web-call-recording/README.md#setup-instructions)
+   * [Run application locally](https://github.com/Azure-Samples/communication-services-recording/blob/main/call-recording-scenarios/web-call-recording/README.md#setup-instructions)
 
 ## Resources
 
