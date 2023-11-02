@@ -2,7 +2,7 @@
 using System.Xml;
 using Azure.Communication.CallAutomation;
 
-namespace communication_services_recording.Controllers
+namespace web_call_recording.Controllers
 {
     [Route("api/utility")]
     [ApiController]

@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 
-namespace communication_services_recording.Controllers
+namespace web_call_recording.Controllers
 {
     [Route("api")]
     [ApiController]

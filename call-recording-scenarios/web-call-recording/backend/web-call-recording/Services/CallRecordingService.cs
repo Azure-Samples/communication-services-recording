@@ -1,4 +1,4 @@
-﻿namespace communication_services_recording.Services
+﻿namespace web_call_recording.Services
 {
     public class CallRecordingService : ICallRecordingService
     {

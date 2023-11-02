@@ -1,4 +1,4 @@
-﻿namespace communication_services_recording.Interfaces
+﻿namespace web_call_recording.Interfaces
 {
     public interface ICallRecordingService
     {

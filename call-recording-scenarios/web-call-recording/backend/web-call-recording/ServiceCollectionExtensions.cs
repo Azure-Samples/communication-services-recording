@@ -1,4 +1,4 @@
-﻿using communication_services_recording.Services;
+﻿using web_call_recording.Services;
 
 public static class ServiceCollectionExtensions
 {

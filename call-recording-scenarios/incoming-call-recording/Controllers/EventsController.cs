@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Text.Json;
 
-namespace CallRecording_VoiceMessage.Controllers
+namespace incoming_call_recording.Controllers
 {
     [Route("api")]
     [ApiController]

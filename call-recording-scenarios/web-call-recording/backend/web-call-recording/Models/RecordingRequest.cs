@@ -1,4 +1,4 @@
-﻿namespace communication_services_recording.Models
+﻿namespace web_call_recording.Models
 {
     public class RecordingRequest
     {

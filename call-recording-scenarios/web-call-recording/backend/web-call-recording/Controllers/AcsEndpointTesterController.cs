@@ -1,12 +1,12 @@
 ﻿using Azure;
-using communication_services_recording.Services;
+using web_call_recording.Services;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace communication_services_recording.Controllers
+namespace web_call_recording.Controllers
 {
     public class AcsEndpointTesterController : Controller
     {
