@@ -24,14 +24,13 @@ namespace incoming_call_recording.Controllers
             CallAutomationClient callAutomationClient)
         {
             //Get ACS Connection String from appsettings.json
-            this.hostUrl = configuration.GetValue<string>("HostUrl");
+            this.hostUrl = configuration.GetValue<string>("BaseUrl");
             this.cognitiveServiceEndpoint = configuration.GetValue<string>("CognitiveServiceEndpoint");
             ArgumentException.ThrowIfNullOrEmpty(this.hostUrl);
             //Call Automation Client
             this.callAutomationClient = callAutomationClient;
             this.logger = logger;
             this.configuration = configuration;
-
         }
 
         [HttpPost]
