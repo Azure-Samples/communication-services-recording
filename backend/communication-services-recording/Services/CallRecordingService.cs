@@ -1,40 +1,16 @@
-﻿
-
-using Azure;
-
-namespace communication_services_recording.Services
+﻿namespace communication_services_recording.Services
 {
     public class CallRecordingService : ICallRecordingService
     {
         private readonly CallAutomationClient callAutomationClient;
-        private readonly IConfiguration configuration;
         private readonly ILogger logger;
 
         public CallRecordingService(
-            IConfiguration configuration,
             ILogger<CallRecordingService> logger,
             CallAutomationClient callAutomationClient)
         {
-            this.configuration = configuration;
             this.logger = logger;
             this.callAutomationClient = callAutomationClient;
-        }
-
-        public async Task<CreateCallResult> CreateCallAsync(string targetId)
-        {
-            try
-            {
-                var callbackUri = new Uri(this.configuration["BaseUrl"] + $"api/callbacks?targetId={targetId}");
-                var target = new CommunicationUserIdentifier(targetId);
-                var callInvite = new CallInvite(target);
-                var createCallOptions = new CreateCallOptions(callInvite, callbackUri);
-                return await callAutomationClient.CreateCallAsync(createCallOptions);
-            }
-            catch (Exception ex)
-            {
-                this.logger.LogError(ex, $"Couldnt create the call");
-                throw;
-            }
         }
 
         public async Task<RecordingStateResult> StartRecording(RecordingRequest recordingRequest)
