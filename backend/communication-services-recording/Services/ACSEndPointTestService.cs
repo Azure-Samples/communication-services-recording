@@ -1,9 +1,4 @@
 ﻿using Newtonsoft.Json;
-using System.Dynamic;
-using System;
-using System.Globalization;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace communication_services_recording.Services
 {

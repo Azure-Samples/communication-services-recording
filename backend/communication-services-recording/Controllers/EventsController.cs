@@ -1,8 +1,4 @@
-﻿using Azure.Messaging;
-using Newtonsoft.Json.Linq;
-using System;
-using System.Reflection.Metadata;
-using static System.Net.Mime.MediaTypeNames;
+﻿using Newtonsoft.Json.Linq;
 
 namespace communication_services_recording.Controllers
 {
@@ -11,19 +7,13 @@ namespace communication_services_recording.Controllers
     public class EventsController : ControllerBase
     {
         private readonly CallAutomationClient callAutomationClient;
-        private readonly EventConverter eventConverter;
         private readonly ILogger logger;
-        private readonly IConfiguration configuration;
 
         public EventsController(
             ILogger<EventsController> logger,
-            IConfiguration configuration,
-            ICallRecordingService callRecordingService,
             CallAutomationClient callAutomationClient)
         {
-            eventConverter = new EventConverter();
             this.logger = logger;
-            this.configuration = configuration;
             this.callAutomationClient = callAutomationClient;
         }
 
@@ -50,40 +40,18 @@ namespace communication_services_recording.Controllers
                     }
                 }
                 logger.LogInformation("Received  event: {type}", eventGridEvent.EventType);
-                var data = eventConverter.Convert(eventGridEvent);
-                switch (data)
+                if (eventData is AcsRecordingFileStatusUpdatedEventData recordingFileStatusUpdatedEventData)
                 {
-                    case null:
-                        continue;
-                    case IncomingCallEvent incomingCallEvent:
-                        var callerId = incomingCallEvent?.From?.RawId;
-                        var callbackUri = new Uri(this.configuration["BaseUrl"] + $"api/callbacks?callerId={callerId}");
-                        var options = new AnswerCallOptions(incomingCallEvent?.IncomingCallContext, callbackUri);
-
-                        AnswerCallResult answerCallResult = await this.callAutomationClient.AnswerCallAsync(options);
-                        logger.LogInformation($"Answer call result: {answerCallResult.CallConnection.CallConnectionId}");
-                        break;
-                    case RecordingFileStatusUpdatedEvent recordingFileStatusUpdated:
-                        logger.LogInformation("Call recording file status updated");
-                        var recordingFileStatusEvent = eventGridEvent.Data.ToObjectFromJson<RecordingFileStatusUpdatedEvent>();
-                        string contentLocation = string.Empty;
-                        string documentId = string.Empty;
-                        string metadataLocation = string.Empty;
-                        string recordingId = eventGridEvent.Subject;
-                        string recordingValue = string.Empty;
-                        recordingValue = GetRecordingId(recordingId);
-
-                        foreach (var recordingInfo in recordingFileStatusEvent?.recordingStorageInfo?.recordingChunks)
-                        {
-                            contentLocation = recordingInfo.contentLocation;
-                            documentId = recordingInfo.documentId;
-                            metadataLocation = recordingInfo.metadataLocation;
-                        }
-
-                        await DownloadRecording(contentLocation, metadataLocation, recordingValue);
-                        break;
+                    logger.LogInformation("Call recording file status updated");
+                    string recordingId = GetRecordingId(eventGridEvent.Subject);
+                    var recordingChunks = recordingFileStatusUpdatedEventData.RecordingStorageInfo.RecordingChunks;
+                    await DownloadRecording(
+                        recordingChunks[0].ContentLocation, 
+                        recordingChunks[0].MetadataLocation, 
+                        recordingId);
                 }
             }
+
             return Ok();
         }
 
