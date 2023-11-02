@@ -2,10 +2,19 @@
 
 Call recording scenarios tool help to debug/demonstrate how to use the call recording feature from the call automation sdk. We have currently used the call recording in two different scenarios to demonstrate,
 
-1. incmoing-call-recording - When acs receives the incoming call event, will answers the incoming call and starts the recording, and stops the recording until user disconnect the call. And downloads the recording in project location whenever the recording is available
-2. web-call-recording - this tool will help to test the server side recording with the calling SDK UI. It does support audio and video recording for 1:1, 1:N and group calling. It has option for both manual and auto record testing
-
-Please follow respective projects readme.md files to know on prerequists and set up instructions. 
+1. [incmoing-call-recording](https://github.com/Azure-Samples/communication-services-recording/blob/main/call-recording-scenarios/incoming-call-recording/README.md) - Receives the incoming call event, and answer the incoming call, starts the recording, and play text to user and allow user to record the message and then it stops the recording until user disconnect the call. Once the recorded file is available for downloading it will be downloaded to project location.
+   * Supported Features
+   * Pre-requisites
+   * Project Setup
+   * ACS Events Registration
+   * Run application locally
+   
+3. [web-call-recording](https://github.com/Azure-Samples/communication-services-recording/blob/main/call-recording-scenarios/web-call-recording/README.md) - this tool will help to test the server side recording with the calling SDK UI. It does support audio and video recording for 1:1, 1:N and group calling. It has option for both manual and auto record testing
+   * Supported Features
+   * Pre-requisites
+   * Project Setup
+   * ACS Events Registration
+   * Run application locally
 
 ## Resources
 
