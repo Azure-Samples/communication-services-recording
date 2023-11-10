@@ -75,7 +75,7 @@ namespace incoming_call_recording.Controllers
                     var callbackUri = new Uri(hostUrl + $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
                     var options = new AnswerCallOptions(incomingCallContext, callbackUri)
                     {
-                        CognitiveServicesEndpoint = new Uri(this.cognitiveServiceEndpoint)
+                        AzureCognitiveServicesEndpointUri = new Uri(this.cognitiveServiceEndpoint)
                     };
 
                     AnswerCallResult answerCallResult = await this.callAutomationClient.AnswerCallAsync(options);
@@ -87,21 +87,23 @@ namespace incoming_call_recording.Controllers
                     {
                         logger.LogInformation($"Call connected event received for connection id: {answer_result.SuccessResult.CallConnectionId}");
                         var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
-                        var playTask = HandleVoiceMessageNoteAsync(callConnectionMedia, answer_result.SuccessResult.CallConnectionId);
+                        await HandleVoiceMessageNoteAsync(callConnectionMedia, answer_result.SuccessResult.CallConnectionId);
                         StartRecordingOptions recordingOptions = new StartRecordingOptions(new ServerCallLocator(answer_result.SuccessResult.ServerCallId))
                         {
                             RecordingContent = RecordingContent.Audio,
                             RecordingChannel = RecordingChannel.Unmixed,
-                            RecordingFormat = RecordingFormat.Wav
+                            RecordingFormat = RecordingFormat.Wav,
+                            PauseOnStart = true
                         };
-                        var recordingTask = this.callAutomationClient.GetCallRecording().StartAsync(recordingOptions);
-                        await Task.WhenAll(playTask, recordingTask);
-                        recordingId = recordingTask.Result.Value.RecordingId;
+                        var recordingResult = await this.callAutomationClient.GetCallRecording().StartAsync(recordingOptions);
+                        recordingId = recordingResult.Value.RecordingId;
+                        await this.callAutomationClient.GetCallRecording().PauseAsync(recordingId);
                         logger.LogInformation($"Call recording id: {recordingId}");
                     }
                     this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
                     {
                         logger.LogInformation($"Play completed event received for connection id: {playCompletedEvent.CallConnectionId}");
+                        await this.callAutomationClient.GetCallRecording().ResumeAsync(recordingId);
                         Console.Beep();
                     });
                     this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayFailed>(answerCallResult.CallConnection.CallConnectionId, async (playFailedEvent) =>
