@@ -1,4 +1,4 @@
-# ACS Call Recording Test Tool
+# Web Call Recording Test Tool
 
 The test tool will help to test the recording feature from the call automation SDK, with the calling SDK UI. It supports audio and video recording for 1:1, 1:N, and group calls. It has options for both manual and auto record testing.
 
@@ -23,63 +23,66 @@ This project framework provides the following features:
 ### Prerequisites
 
 * An Azure account with an active subscription. For details, see [Create an account for free](https://aka.ms/Mech-Azureaccount) 
-* Communication service
+* Create an Azure Communication Services resource. For details, see [Create an Azure Communication Resource.](https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/create-communication-resource?tabs=windows&pivots=platform-azp) You'll need to record your resource connection string for this sample.
 * NPM
 * Node js
 * For local run: Install Azure Dev Tunnels CLI. For details, see [Create and host dev tunnel](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started?tabs=windows)
 * [.NET 7](https://dotnet.microsoft.com/download)
-* [Cognitive Service ](https://learn.microsoft.com/en-us/azure/search/search-create-service-portal)
 
-### Code Structure
-* ./frontend is front end source code for the backend ./backend/communication-services-recording.
-* ./backend/communication-services-recording is backend which supports the features provided in feature sections.
-* ./backend/CallRecording_VoiceMessage is backend code which accepts the incoming call and starts the recordin, and play some text and stops the recording.
+## Setup Instructions
 
-### Installation
-
-**Frontend**
+### Frontend
 1. Get your Azure Communication Services resource connection string from the Azure portal, and put it as the value for connectionString in serverConfig.json file.
 2. From the terminal/command prompt, Run:
-   * npm install
-   * npm run build-local
-   * npm run start-local
-4. Open provided localhost url from your terminal in the browser
-
-**Backend**
-
-  1. ./backend/communication-services-recording
-     
-      * [Create and host dev tunnel](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started?tabs=windows)
-      * Build and run the project from visual studio or using "dotnet run" cli cmd
-    
-  2. ./backend/communication-services-recording
-
-      * [Create and host dev tunnel](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/get-started?tabs=windows)
-      * Build and run the project from visual studio or using "dotnet run" cli cmd
-      * Please add the webhook for the event **"IncomingCall"** in your communication service events. make sure your webhook endpoint points to your devtunnel url https://{devtunnelurl}/api/events
-
-**Communication Service Events Setup**
-1. Please add the webhook for the event **"RecordingFileStatusUpdated"** in your communication service events. make sure your webhook endpoint points to your devtunnel url https://{devtunnelurl}/api/events
-### Quickstart
-(Add steps to get up and running quickly)
-
-**backend/communication-services-recording**
-
-1. git clone [https://github.com/Azure-Samples/communication-services-recording.git](https://github.com/Azure-Samples/communication-services-recording.git)
-2. cd communication-services-recording
-3. Update the connection string in the frontend/PROJECT/serverConfig.json
-4. Update the below properties on the backend/communication-services-recording/appsettings.json
-    - "BaseUrl": "<your devtunnel url>"
-    - "AcsConnectionString": "<your Azure communication service connectionstring>"
-    - "AcsKey": "<your Azure communication service connectionstring>"
-6. Follow the frontend and backend installation steps
    
-**backend/CallRecording-VoiceMessage**
+```bash
+npm install
+npm run build-local
+npm run start-local
+```
 
-1. git clone [https://github.com/Azure-Samples/communication-services-recording.git](https://github.com/Azure-Samples/communication-services-recording.git)
-2. Update the below properties on the backend/CallRecording_VoiceMessage/appsettings.json
-   - "AcsConnectionString": "<your Azure communication service connectionstring>",
-   - "CognitiveServiceEndpoint": "<your cognitive service endpoint>",  
+3. Open provided localhost url from your terminal in the browser
+
+### Backend
+
+  #### 1. Setup and host your Azure DevTunnel
+
+[Azure DevTunnels](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/overview) is an Azure service that enables you to share local web services hosted on the internet. Use the commands below to connect your local development environment to the public internet. This creates a tunnel with a persistent endpoint URL and which allows anonymous access. We will then use this endpoint to notify your application of calling events from the ACS Call Automation service.
+
+```bash
+devtunnel create --allow-anonymous
+devtunnel port create -p 7108
+devtunnel host
+```
+
+#### 2. Add the required API Keys and endpoints
+Open the appsettings.json file to configure the following settings:
+
+    
+    - `AcsConnectionString`: Azure Communication Service resource's connection string.
+    - `AcsKey`: Azure Communication Service resource key
+    - `BaseUrl`:  your dev tunnel endpoint
+
+## Running the application
+
+1. Azure DevTunnel: Ensure your AzureDevTunnel URI is active and points to the correct port of your localhost application
+2. Run `dotnet run` to build and run the web-call-recording tool
+3. Follow the Setup Instructions
+4. Register an EventGrid Webhook for the "Incoming Call" & "Recording File Status Updated" Events that points to your DevTunnel URI. Instructions [here](https://learn.microsoft.com/en-us/azure/communication-services/concepts/call-automation/incoming-call-notification).
+   Step 1 -> Go to your communication service resource in the Azure portal
+   Step 2 -> Left corner you might see the events and click event subsription on the right
+   ![image](https://github.com/Azure-Samples/communication-services-recording/assets/146493756/3e008c23-ba47-4eb7-8bbb-f0df4623801a)
+
+   Step 3 -> Give the Name under the Subscription Details, and provide the system topic name under Topic Details and select "Incoming Call" & "Recording File Status Updated" under Event Types, And select the "Web Hook" from the Endpoint Details section
+   ![image](https://github.com/Azure-Samples/communication-services-recording/assets/146493756/af0045a4-1ca5-4126-98e6-ea96557ec937)
+
+   Step 4 -> Click on Configure an endpoint, provide Subscriber Endpoint to your devtunnel url, and for the events endpoint. ex. https://<devtunnelurl>/api/events. And click on the Confirm Selection and Create
+   ![image](https://github.com/Azure-Samples/communication-services-recording/assets/146493756/673a661a-f36b-4dad-80ea-8a813ad7a17a)
+
+   Step 5 -> once its created you will be able to see under the events section of the communication service
+   ![image](https://github.com/Azure-Samples/communication-services-recording/assets/146493756/88e94e69-0443-466a-ada7-b881e21ff507)
+
+
 
 
 ## Demo

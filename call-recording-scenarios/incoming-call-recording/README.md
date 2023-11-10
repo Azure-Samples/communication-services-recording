@@ -6,7 +6,10 @@ Receives the incoming call event, and answer the incoming call, starts the recor
 
 This project framework provides the following features:
 
-* [TODO]
+* Accepts the incoming call to ACS User identity
+* Play text to User
+* Recording the user message
+* Downloads the recording file to your project location
 
 ## Getting Started
 
@@ -44,6 +47,8 @@ Open the appsettings.json file to configure the following settings:
     - `BaseUrl`:  your dev tunnel endpoint
 
 ## Running the application
+
+Best way to test this application, by calling to communication identifier [you can refer this web ui to make call to communication identitifer or acs phone number](https://github.com/Azure-Samples/communication-services-web-calling-tutorial/blob/main/README.md)
 
 1. Azure DevTunnel: Ensure your AzureDevTunnel URI is active and points to the correct port of your localhost application
 2. Run `dotnet run` to build and run the incoming-call-recording tool
