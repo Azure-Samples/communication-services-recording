@@ -1,21 +1,20 @@
 # Web Call Recording Test Tool
 
-Test tool will help to test the recording feature from call automation sdk, with the calling SDK UI. It does support audio and video recording for 1:1, 1:N and group calling.
-It has option for both manual and auto record testing
+The test tool will help to test the recording feature from the call automation SDK, with the calling SDK UI. It supports audio and video recording for 1:1, 1:N, and group calls. It has options for both manual and auto record testing.
 
 ## Features
 
 This project framework provides the following features:
 
-* UI supports both audio and video call for 1:1, 1:N and group call
-* You can choose the different recording contraints for your call record
-* It does auto record, when we place call with auto record check option, it starts the recording, play some sound for 10 secs, stop the play and disconnect the call.
-* Once its disconnected it shows the downloaded recording file path to your local (currently it just download to project path)
-* When we uncheck the auto record, then it provide start recording option during the call with the recording contraints
-* Provided the api endpoints for the testing the rest api directly with the api version
+* The UI supports both audio and video calls for 1:1, 1:N, and group calls.
+* You can choose the different recording constraints for your call record.
+* It does auto record when we place a call with the auto record check option. It starts the recording, plays some sound for 10 seconds, stops the play, and disconnects the call.
+* Once it is disconnected, it shows the downloaded recording file path to your local (currently it just downloads to the project path).
+* When we uncheck the auto record, it provides a start recording option during the call with the recording constraints.
+* It provides the API endpoints for testing the REST API directly with the API version.
   ![image](https://github.com/Azure-Samples/communication-services-recording/assets/146493756/3cc34b48-b371-48b9-8e88-a187256fc0ef)
 
-* Api endpoint what call automation version used for the recording
+* The API endpoint to show the call automation version used in the project
   ![image](https://github.com/Azure-Samples/communication-services-recording/assets/146493756/db2a4afc-cea4-4a8e-905b-2ba7da7e4ea2)
 
 

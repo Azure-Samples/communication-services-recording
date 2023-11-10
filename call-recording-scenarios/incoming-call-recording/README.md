@@ -6,10 +6,10 @@ Receives the incoming call event, and answer the incoming call, starts the recor
 
 This project framework provides the following features:
 
-* Accepts the incoming call to ACS User identity
-* Play text to User
-* Recording the user message
-* Downloads the recording file to your project location
+* It accepts the incoming call to the ACS User identity.
+* It plays text to the user.
+* It records the user message.
+* It downloads the recording file to your project location.
 
 ## Getting Started
 
