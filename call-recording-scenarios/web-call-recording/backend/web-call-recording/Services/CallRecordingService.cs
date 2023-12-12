@@ -2,15 +2,18 @@
 {
     public class CallRecordingService : ICallRecordingService
     {
+        private readonly IConfiguration configuration;
         private readonly CallAutomationClient callAutomationClient;
         private readonly ILogger logger;
 
         public CallRecordingService(
             ILogger<CallRecordingService> logger,
-            CallAutomationClient callAutomationClient)
+            CallAutomationClient callAutomationClient,
+            IConfiguration configuration)
         {
             this.logger = logger;
             this.callAutomationClient = callAutomationClient;
+            this.configuration = configuration;
         }
 
         public async Task<RecordingStateResult> StartRecording(RecordingRequest recordingRequest)
@@ -29,6 +32,20 @@
                 recordingOptions.RecordingFormat = !string.IsNullOrWhiteSpace(recordingRequest.RecordingFormat) ?
                     new RecordingFormat(recordingRequest.RecordingFormat) :
                     RecordingFormat.Wav;
+
+                if (recordingRequest.isByos)
+                {
+                    string externalStorageUrl = configuration.GetValue<string>("BringYourOwnStorageUrl")!;
+                    if (!string.IsNullOrEmpty(externalStorageUrl))
+                    {
+                        recordingOptions.ExternalStorage = new BlobStorage(new Uri(externalStorageUrl));
+                    }
+                    else
+                    {
+                        this.logger.LogError("External storage is not configured.");
+                    }
+                    
+                }
 
                 var startRecordingResponse = await this.callAutomationClient.GetCallRecording()
                     .StartAsync(recordingOptions);

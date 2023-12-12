@@ -10,5 +10,7 @@
         public string RecordingFormat { get; set; }
 
         public bool IsRecord { get; set; }
+
+        public bool isByos { get; set; }
     }
 }
