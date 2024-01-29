@@ -1,6 +1,6 @@
 import React from "react";
 import { CallClient, LocalVideoStream, Features, CallAgentKind, VideoStreamRenderer } from '@azure/communication-calling';
-import { AzureCommunicationTokenCredential, createIdentifierFromRawId} from '@azure/communication-common';
+import { AzureCommunicationTokenCredential, createIdentifierFromRawId } from '@azure/communication-common';
 import {
     PrimaryButton,
     TextField,
@@ -55,8 +55,8 @@ export default class MakeCall extends React.Component {
             identityMri: undefined,
             recordCallConstraint: null,
             isRecord: true,
-            downloadContentResponse:undefined,
-            recordingResponse : undefined
+            downloadContentResponse: undefined,
+            recordingResponse: undefined
         };
 
         setInterval(() => {
@@ -74,7 +74,7 @@ export default class MakeCall extends React.Component {
 
     handleRecordConstraint = (constraints) => {
         if (constraints) {
-            this.setState({recordCallConstraint : constraints})
+            this.setState({ recordCallConstraint: constraints })
         }
     }
 
@@ -89,23 +89,23 @@ export default class MakeCall extends React.Component {
             try {
                 const tokenCredential = new AzureCommunicationTokenCredential(userDetails.token);
                 this.tokenCredential = tokenCredential;
-                setLogLevel('verbose');                
+                setLogLevel('verbose');
                 this.callClient = new CallClient({
                     diagnostics: {
                         appName: 'azure-communication-services',
                         appVersion: '1.3.1-beta.1',
                         tags: ["javascript_calling_sdk",
-                        `#clientTag:${userDetails.clientTag}`]
+                            `#clientTag:${userDetails.clientTag}`]
                     }
                 });
 
                 this.deviceManager = await this.callClient.getDeviceManager();
                 const permissions = await this.deviceManager.askDevicePermission({ audio: true, video: true });
-                this.setState({permissions: permissions});
+                this.setState({ permissions: permissions });
 
-                this.setState({ isTeamsUser: userDetails.isTeamsUser});
-                this.setState({ identityMri: createIdentifierFromRawId(userDetails.communicationUserId)})
-                this.callAgent =  this.state.isTeamsUser ?
+                this.setState({ isTeamsUser: userDetails.isTeamsUser });
+                this.setState({ identityMri: createIdentifierFromRawId(userDetails.communicationUserId) })
+                this.callAgent = this.state.isTeamsUser ?
                     await this.callClient.createTeamsCallAgent(tokenCredential) :
                     await this.callClient.createCallAgent(tokenCredential, { displayName: userDetails.displayName });
 
@@ -140,19 +140,19 @@ export default class MakeCall extends React.Component {
 
                         const data = localStorage.getItem('recordingResponse');
                         const recordingResponse = JSON.parse(data);
-                        this.setState({recordingResponse : recordingResponse})
+                        this.setState({ recordingResponse: recordingResponse })
 
                         const downloadPath = localStorage.getItem('downloadPath');
-                        if(downloadPath !== null || downloadPath !== undefined){
+                        if (downloadPath !== null || downloadPath !== undefined) {
                             recordingService.downloadRecording(downloadPath)
-                            .then(res => {
-                                this.setState({downloadContentResponse:JSON.stringify(res)})
-                            })
-                            .catch(error => {
-                                console.error('Error', error);
-                            });
+                                .then(res => {
+                                    this.setState({ downloadContentResponse: JSON.stringify(res) })
+                                })
+                                .catch(error => {
+                                    console.error('Error', error);
+                                });
                         }
-                        
+
                     });
                 });
                 this.callAgent.on('incomingCall', args => {
@@ -181,14 +181,14 @@ export default class MakeCall extends React.Component {
         if (callEndReason.code !== 0 || callEndReason.subCode !== 0) {
             this.setState({ callError: `Call end reason: code: ${callEndReason.code}, subcode: ${callEndReason.subCode}` });
         }
-        
+
         this.setState({ call: null, incomingCall: null });
     }
 
     placeCall = async (withVideo) => {
         try {
-            this.setState({recordingResponse : undefined})
-            this.setState({downloadContentResponse:undefined})
+            this.setState({ recordingResponse: undefined })
+            this.setState({ downloadContentResponse: undefined })
             let identitiesToCall = [];
             const userIdsArray = this.destinationUserIds.value.split(',');
 
@@ -207,7 +207,7 @@ export default class MakeCall extends React.Component {
                 }
             });
 
-            const callOptions = await this.getCallOptions({video: withVideo, micMuted: false});
+            const callOptions = await this.getCallOptions({ video: withVideo, micMuted: false });
             this.callAgent.startCall(identitiesToCall, callOptions);
 
         } catch (e) {
@@ -218,16 +218,16 @@ export default class MakeCall extends React.Component {
 
     joinGroup = async (withVideo) => {
         try {
-            this.setState({recordingResponse : undefined});
-            this.setState({downloadContentResponse:undefined});
-            const callOptions = await this.getCallOptions({video: withVideo, micMuted: false});
+            this.setState({ recordingResponse: undefined });
+            this.setState({ downloadContentResponse: undefined });
+            const callOptions = await this.getCallOptions({ video: withVideo, micMuted: false });
             this.callAgent.join({ groupId: this.destinationGroup.value }, callOptions);
         } catch (e) {
             console.error('Failed to join a call', e);
             this.setState({ callError: 'Failed to join a call: ' + e });
         }
     };
-   
+
     async getCallOptions(options) {
         let callOptions = {
             videoOptions: {
@@ -244,7 +244,7 @@ export default class MakeCall extends React.Component {
 
         // On iOS, device permissions are lost after a little while, so re-ask for permissions
         const permissions = await this.deviceManager.askDevicePermission({ audio: true, video: true });
-        this.setState({permissions: permissions});
+        this.setState({ permissions: permissions });
 
         const cameras = await this.deviceManager.getCameras();
         const cameraDevice = cameras[0];
@@ -321,17 +321,17 @@ export default class MakeCall extends React.Component {
             });
             const preCallDiagnosticsResult = await this.callClient.feature(Features.PreCallDiagnostics).startTest(this.tokenCredential);
 
-            const deviceAccess =  await preCallDiagnosticsResult.deviceAccess;
-            this.setState({preCallDiagnosticsResults: {...this.state.preCallDiagnosticsResults, deviceAccess}});
+            const deviceAccess = await preCallDiagnosticsResult.deviceAccess;
+            this.setState({ preCallDiagnosticsResults: { ...this.state.preCallDiagnosticsResults, deviceAccess } });
 
             const deviceEnumeration = await preCallDiagnosticsResult.deviceEnumeration;
-            this.setState({preCallDiagnosticsResults: {...this.state.preCallDiagnosticsResults, deviceEnumeration}});
+            this.setState({ preCallDiagnosticsResults: { ...this.state.preCallDiagnosticsResults, deviceEnumeration } });
 
-            const inCallDiagnostics =  await preCallDiagnosticsResult.inCallDiagnostics;
-            this.setState({preCallDiagnosticsResults: {...this.state.preCallDiagnosticsResults, inCallDiagnostics}});
+            const inCallDiagnostics = await preCallDiagnosticsResult.inCallDiagnostics;
+            this.setState({ preCallDiagnosticsResults: { ...this.state.preCallDiagnosticsResults, inCallDiagnostics } });
 
-            const browserSupport =  await preCallDiagnosticsResult.browserSupport;
-            this.setState({preCallDiagnosticsResults: {...this.state.preCallDiagnosticsResults, browserSupport}});
+            const browserSupport = await preCallDiagnosticsResult.browserSupport;
+            this.setState({ preCallDiagnosticsResults: { ...this.state.preCallDiagnosticsResults, browserSupport } });
 
             this.setState({
                 showPreCallDiagnostcisResults: true,
@@ -364,13 +364,14 @@ export default class MakeCall extends React.Component {
                             {this.state.recordingResponse.error && <div>Error Stack Trace: {this.state.recordingResponse.error.stacktrace}</div>}
                             {this.state.recordingResponse.events && <div>
                                 <h3>Events:</h3>
-                                <ul>
+                                <ul className="response-list">
                                     {this.state.recordingResponse.events && this.state.recordingResponse.events.map((event, index) => (
                                         <li key={index}>
                                             <div>Name: {event.name}</div>
                                             <div>Start Time: {event.startTime}</div>
                                             <div>End Time: {event.endTime}</div>
                                             <div>Response: {event.response}</div>
+                                            <hr></hr>
                                         </li>
                                     ))}
                                 </ul>
@@ -380,7 +381,7 @@ export default class MakeCall extends React.Component {
                         <br></br>
                     </div>
                 }
-                <Login onLoggedIn={this.handleLogIn} ref={this.logInComponentRef}/>
+                <Login onLoggedIn={this.handleLogIn} ref={this.logInComponentRef} />
                 <div className="card">
                     <div className="ms-Grid">
                         <div className="ms-Grid-row">
@@ -430,14 +431,14 @@ export default class MakeCall extends React.Component {
                             <div>
                                 <div>
                                     <h3 className="mb-1">Record Constraints</h3>
-                                        <RecordConstraint
-                                            onChange={this.handleRecordConstraint}
-                                            disabled={this.state.call || !this.state.loggedIn}
-                                        />
+                                    <RecordConstraint
+                                        onChange={this.handleRecordConstraint}
+                                        disabled={this.state.call || !this.state.loggedIn}
+                                    />
                                 </div>
                                 <br></br>
                                 <div>
-                                    <h2>Record</h2> <input type="checkbox" checked ={this.state.isRecord} onChange={this.handleCheckboxChange} />
+                                    <h2>Record</h2> <input type="checkbox" checked={this.state.isRecord} onChange={this.handleCheckboxChange} />
                                 </div>
                                 <div className="ms-Grid-row mt-3">
                                     <div className="call-input-panel mb-5 ms-Grid-col ms-sm12 ms-md12 ms-lg12 ms-xl6 ms-xxl3">
@@ -469,10 +470,10 @@ export default class MakeCall extends React.Component {
                                             disabled={this.state.call || !this.state.loggedIn}
                                             onClick={() => this.placeCall(true)}>
                                         </PrimaryButton>
-                                        </div>
+                                    </div>
                                     <div className="ms-Grid-col ms-sm12 ms-md12 ms-lg12 ms-xl1 ms-xxl1">
                                     </div>
-                                   
+
                                     <div className="ms-Grid-col ms-sm12 ms-md12 ms-lg12 ms-xl1 ms-xxl1">
                                     </div>
                                     <div className="call-input-panel mb-5 ms-Grid-col ms-sm12 ms-md12 ms-lg12 ms-xl6 ms-xxl3">
@@ -514,7 +515,7 @@ export default class MakeCall extends React.Component {
                                             disabled={this.state.call || !this.state.loggedIn}
                                         />
                                     </div>
-                                    </div>
+                                </div>
                             </div>
 
                         }
@@ -690,7 +691,7 @@ export default class MakeCall extends React.Component {
                         <div className="ms-Grid-row">
                             <h2 className="ms-Grid-col ms-lg6 ms-sm6 mb-4">Video, Screen sharing, and local video preview</h2>
                         </div>
-                        
+
                         <h3>
                             Video - try it out.
                         </h3>
@@ -725,7 +726,7 @@ export default class MakeCall extends React.Component {
                 <div className="card">
                     <div className="ms-Grid">
                         <div className="ms-Grid-row">
-                            <h2 className="ms-Grid-col ms-lg6 ms-sm6 mb-4">Hold / Unhold</h2>                           
+                            <h2 className="ms-Grid-col ms-lg6 ms-sm6 mb-4">Hold / Unhold</h2>
                         </div>
                         <h3>
                             Try it out.

@@ -57,7 +57,8 @@ export const recordingService = {
                 }
             });
             if (response.ok) {
-                return response.ok;
+                const data = await response.json();
+                return data;
             } else {
                 throw new Error('Network response was not ok');
             }
@@ -76,7 +77,8 @@ export const recordingService = {
                 }
             });
             if (response.ok) {
-                return response.ok;
+                const data = await response.json();
+                return data;
             } else {
                 throw new Error('Network response was not ok');
             }
@@ -94,8 +96,10 @@ export const recordingService = {
                     'Content-Type': 'application/json',
                 }
             });
+
             if (response.ok) {
-                return response.ok;
+                const data = await response.json();
+                return data;
             } else {
                 throw new Error('Network response was not ok');
             }
@@ -125,5 +129,5 @@ export const recordingService = {
             console.error('POST request failed:', error);
         }
     }
-    
+
 }
