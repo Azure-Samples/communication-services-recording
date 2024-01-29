@@ -6,7 +6,6 @@
     {
         private readonly ICallRecordingService callRecordingService;
         private readonly CallAutomationClient callAutomationClient;
-        private static string recordingId = string.Empty;
         private readonly ILogger logger;
 
         public CallRecordingController(
@@ -38,7 +37,6 @@
                 recordingEvent.StartTime = DateTime.UtcNow.ToString();
 
                 var recordingResult = await this.callRecordingService.StartRecording(recordingRequest);
-                recordingId = recordingResult.RecordingId;
                 recordingRespone.RecordingId = recordingResult.RecordingId;
                 recordingEvent.EndTime = DateTime.UtcNow.ToString();
                 recordingEvent.Response = JsonSerializer.Serialize(recordingResult);
@@ -61,42 +59,71 @@
         {
             ArgumentNullException.ThrowIfNull(recordingRequest, nameof(recordingRequest));
             ArgumentException.ThrowIfNullOrEmpty(recordingRequest.ServerCallId);
-            var recordingRespone = new RecordingResponse();
-            recordingRespone.ServerCallId = recordingRequest.ServerCallId;
-            recordingRespone.CallConnectionId = recordingRequest.CallConnectionId;
-            var recordingEvent = new Event();
-            recordingEvent.Name = "StartRecording";
-            recordingEvent.StartTime = DateTime.UtcNow.ToString();
+            string startTime = DateTime.UtcNow.ToString();
             var recordingResult = await this.callRecordingService.StartRecording(recordingRequest);
-            recordingRespone.RecordingId = recordingResult.RecordingId;
-            recordingEvent.EndTime = DateTime.UtcNow.ToString();
-            recordingEvent.Response = JsonSerializer.Serialize(recordingResult);
-            recordingRespone.Events = new List<Event> { recordingEvent };
-            return Ok(recordingRespone);
+            string endTime = DateTime.UtcNow.ToString();
+            string response = JsonSerializer.Serialize(recordingResult);
+
+            this.logger.LogInformation($"Recording started, recording Id : {recordingResult.RecordingId}");
+            this.logger.LogInformation($"Recording state {recordingResult.RecordingState}");
+            var recordingResponse = this.getRecordingResponse(recordingRequest.ServerCallId,
+                 recordingRequest.CallConnectionId, recordingResult.RecordingId);
+            recordingResponse.Events = new List<Event>() { this.getEvent("StartRecording", startTime, endTime, response) };
+            return Ok(recordingResponse);
         }
 
         [HttpPost]
         [Route("pause")]
         public async Task<IActionResult> PauseRecording(string recordingId)
         {
-            await this.callRecordingService.PauseRecording(recordingId);
-            return Ok();
+            var events = new List<Event>();
+            string startTime = DateTime.UtcNow.ToString();
+            var response = await this.callRecordingService.PauseRecording(recordingId);
+            string endTime = DateTime.UtcNow.ToString();
+            events.Add(this.getEvent("PauseRecording", startTime, endTime, response.ToString()));
+            if (response != null && response.Status == 202)
+            {
+                string stateCallStartTime = DateTime.UtcNow.ToString();
+                var state = await callAutomationClient.GetCallRecording().GetStateAsync(recordingId);
+                string stateCallEndTime = DateTime.UtcNow.ToString();
+                events.Add(this.getEvent("GetState", stateCallStartTime, stateCallEndTime, JsonSerializer.Serialize(state)));
+                logger.LogInformation($"Recording has been paused and {state?.Value.RecordingState} state");
+            }
+
+            return Ok(events);
         }
 
         [HttpPost]
         [Route("resume")]
         public async Task<IActionResult> ResumeRecording(string recordingId)
         {
-            await this.callRecordingService.ResumeRecording(recordingId);
-            return Ok();
+            var events = new List<Event>();
+            string startTime = DateTime.UtcNow.ToString();
+            var response =  await this.callRecordingService.ResumeRecording(recordingId);
+            string endTime = DateTime.UtcNow.ToString();
+            events.Add(this.getEvent("ResumeRecording", startTime, endTime, response.ToString()));
+            if (response != null && response.Status == 202)
+            {
+                string stateCallStartTime = DateTime.UtcNow.ToString();
+                var state = await callAutomationClient.GetCallRecording().GetStateAsync(recordingId);
+                string stateCallEndTime = DateTime.UtcNow.ToString();
+                events.Add(this.getEvent("GetState", stateCallStartTime, stateCallEndTime, JsonSerializer.Serialize(state)));
+                logger.LogInformation($"Recording has been resumed and {state?.Value.RecordingState} state");
+            }
+
+            return Ok(events);
         }
 
         [HttpPost]
         [Route("stop")]
         public async Task<IActionResult> StopRecording(string recordingId)
         {
-            await this.callRecordingService.StopRecording(recordingId);
-            return Ok();
+            var events = new List<Event>();
+            string startTime = DateTime.UtcNow.ToString();
+            var response = await this.callRecordingService.StopRecording(recordingId);
+            string endTime = DateTime.UtcNow.ToString();
+            events.Add(this.getEvent("StopRecording", startTime, endTime, response.ToString()));
+            return Ok(events);
         }
 
         [HttpGet]
@@ -105,6 +132,27 @@
         {
             var response = await this.callRecordingService.RecordingPath(recordingId);
             return Ok(response);
+        }
+
+        private RecordingResponse getRecordingResponse(string serverCallId, string clientCallId, string recordingId)
+        {
+            return new RecordingResponse()
+            {
+                ServerCallId = serverCallId,
+                CallConnectionId = clientCallId,
+                RecordingId = recordingId
+            };
+        }
+
+        private Event getEvent(string eventName, string startTime, string endTime, string result)
+        {
+            return new Event()
+            {
+                Name = eventName,
+                StartTime = startTime,
+                EndTime = endTime,
+                Response = result
+            };
         }
     }
 }

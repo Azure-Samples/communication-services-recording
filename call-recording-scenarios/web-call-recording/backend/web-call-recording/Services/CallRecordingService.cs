@@ -54,11 +54,11 @@
             }
         }
 
-        public async Task PauseRecording(string recordingId)
+        public async Task<Response> PauseRecording(string recordingId)
         {
             try
             {
-                await this.callAutomationClient.GetCallRecording().PauseAsync(recordingId);
+              return await this.callAutomationClient.GetCallRecording().PauseAsync(recordingId);
             }
             catch (Exception ex)
             {
@@ -67,11 +67,11 @@
             }
         }
 
-        public async Task ResumeRecording(string recordingId)
+        public async Task<Response> ResumeRecording(string recordingId)
         {
             try
             {
-                await this.callAutomationClient.GetCallRecording().ResumeAsync(recordingId);
+               return await this.callAutomationClient.GetCallRecording().ResumeAsync(recordingId);
             }
             catch (Exception ex)
             {

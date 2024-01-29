@@ -4,8 +4,8 @@
     {
         Task<RecordingStateResult> StartRecording(RecordingRequest recordingRequest);
         Task<Response> StopRecording(string recordingId);
-        Task PauseRecording(string recordingId);
-        Task ResumeRecording(string recordingId);
+        Task<Response> PauseRecording(string recordingId);
+        Task<Response> ResumeRecording(string recordingId);
         Task<Dictionary<string,string>> RecordingPath(string recordingId);
     }
 }
