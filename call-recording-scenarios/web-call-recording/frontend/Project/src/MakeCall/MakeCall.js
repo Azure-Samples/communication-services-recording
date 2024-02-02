@@ -375,13 +375,14 @@ export default class MakeCall extends React.Component {
                             {this.state.recordingResponse.error && <div>Error Stack Trace: {this.state.recordingResponse.error.stacktrace}</div>}
                             {this.state.recordingResponse.events && <div>
                                 <h3>Events:</h3>
-                                <ul>
+                                <ul className="response-list">
                                     {this.state.recordingResponse.events && this.state.recordingResponse.events.map((event, index) => (
                                         <li key={index}>
                                             <div>Name: {event.name}</div>
                                             <div>Start Time: {event.startTime}</div>
                                             <div>End Time: {event.endTime}</div>
                                             <div>Response: {event.response}</div>
+                                            <hr></hr>
                                         </li>
                                     ))}
                                 </ul>
