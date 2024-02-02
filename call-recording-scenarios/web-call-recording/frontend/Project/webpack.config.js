@@ -4,12 +4,16 @@ const config = require("./serverConfig.json");
 const axios = require("axios");
 const bodyParser = require('body-parser');
 
-if(!config || !config.connectionString || config.connectionString.indexOf('endpoint=') === -1)
-{
+const msal = require('@azure/msal-node');
+
+const { authConfig, authScopes } = require('./oAuthConfig');
+const clientId = authConfig.auth.clientId;
+
+if (!config || !config.connectionString || config.connectionString.indexOf('endpoint=') === -1) {
     throw new Error("Update `serverConfig.json` with connection string");
 }
 
-const communicationIdentityClient = new  CommunicationIdentityClient(config.connectionString);
+const communicationIdentityClient = new CommunicationIdentityClient(config.connectionString);
 
 const PORT = process.env.port || 8081;
 
@@ -39,9 +43,37 @@ const generateGuid = function () {
     return `${s4()}${s4()}-${s4()}-${s4()}-${s4()}-${s4()}${s4()}${s4()}`;
 }
 
+function parseJWT(token) {
+    return JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+}
+
 // Exchanging Azure AD access token of a Teams User for a Communication access token
 // https://learn.microsoft.com/en-us/azure/communication-services/quickstarts/manage-teams-identity?pivots=programming-language-javascript
 
+const getACSAccessTokenInfo = async (aadToken, userObjectId) => {
+    let acsToken;
+    try {
+        acsToken = await communicationIdentityClient.getTokenForTeamsUser({
+            teamsUserAadToken: aadToken,
+            clientId,
+            userObjectId: userObjectId
+        });
+    } catch (e) {
+        console.log('ERROR', e);
+        throw e
+    }
+
+    let parsedToken = parseJWT(acsToken.token);
+    if (parsedToken == '') {
+        throw (" Parsed Token is empty");
+    }
+    const mri = `8:${parsedToken.skypeid}`;
+    const tokenResponse = {
+        token: acsToken.token,
+        userId: { communicationUserId: mri }
+    };
+    return tokenResponse;
+}
 
 module.exports = {
     devtool: 'inline-source-map',
@@ -84,8 +116,8 @@ module.exports = {
     devServer: {
         open: true,
         port: PORT,
-        static:'./public',
-        allowedHosts:[
+        static: './public',
+        allowedHosts: [
             '.azurewebsites.net'
         ],
         webSocketServer: false,
@@ -110,7 +142,7 @@ module.exports = {
                         oneSignalRegistrationToken = await registerCommunicationUserForOneSignal(communicationUserToken, CommunicationUserIdentifier);
                     }
                     res.setHeader('Content-Type', 'application/json');
-                    res.status(200).json({communicationUserToken, oneSignalRegistrationToken, userId: CommunicationUserIdentifier });
+                    res.status(200).json({ communicationUserToken, oneSignalRegistrationToken, userId: CommunicationUserIdentifier });
                 } catch (e) {
                     console.log('Error setting registration token', e);
                     res.sendStatus(500);
@@ -129,13 +161,13 @@ module.exports = {
             });
             devServer.app.post('/getOneSignalRegistrationTokenForCommunicationUserToken', async (req, res) => {
                 try {
-                    const communicationUserToken = {token: req.body.token };
+                    const communicationUserToken = { token: req.body.token };
                     const communicationUserIdentifier = { communicationUserId: req.body.communicationUserId };
 
                     if (!config.functionAppOneSignalTokenRegistrationUrl) {
                         res.setHeader('Content-Type', 'application/json');
                         res.status(200).json({
-                            communicationUserToken, userId: communicationUserIdentifier 
+                            communicationUserToken, userId: communicationUserIdentifier
                         });
                         return;
                     }
@@ -159,6 +191,45 @@ module.exports = {
                 } catch (e) {
                     console.log('Error setting registration token', e);
                     res.sendStatus(500);
+                }
+            });
+
+            devServer.app.post('/teamsPopupLogin', async (req, res) => {
+                try {
+                    const aadToken = req.body.aadToken;
+                    const userObjectId = req.body.userObjectId;
+                    let acsTokenInfo = await getACSAccessTokenInfo(aadToken, userObjectId);
+                    res.setHeader('Content-Type', 'application/json');
+                    res.status(200).json({
+                        communicationUserToken: { token: acsTokenInfo.token },
+                        userId: acsTokenInfo.userId
+                    });
+                } catch (e) {
+                    console.error(e);
+                    res.sendStatus(400);
+                }
+            });
+            devServer.app.post('/teamsM365Login', async (req, res) => {
+                try {
+                    const email = req.body.email;
+                    const password = req.body.password;
+
+                    const pca = new msal.PublicClientApplication(authConfig);
+                    let tokenRequest = { scopes: authScopes.m365Login }
+
+                    tokenRequest.username = email;
+                    tokenRequest.password = password;
+                    const response = await pca.acquireTokenByUsernamePassword(tokenRequest);
+                    let acsTokenInfo = await getACSAccessTokenInfo(response.accessToken, response.uniqueId);
+
+                    res.setHeader('Content-Type', 'application/json');
+                    res.status(200).json({
+                        communicationUserToken: { token: acsTokenInfo.token },
+                        userId: acsTokenInfo.userId
+                    });
+                } catch (e) {
+                    console.error(e);
+                    res.sendStatus(400);
                 }
             });
 

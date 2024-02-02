@@ -45,6 +45,7 @@ export default class CallCard extends React.Component {
         this.dominantSpeakersFeature = this.call.feature(Features.DominantSpeakers);
         this.recordCallConstraints = props.recordCallConstraint;
         this.isRecordCall = props.isRecord;
+        this.isTeamsUser = props.isTeamsUser;
         if (Features.Reaction) {
             this.meetingReaction = this.call.feature(Features.Reaction);
         }
@@ -97,7 +98,7 @@ export default class CallCard extends React.Component {
             isRecordingActive: false,
             recordingResponse: undefined,
             isRecordingPaused: false,
-            inCallRecordingConstraint:null,
+            inCallRecordingConstraint: null,
             recordingStartedNotification: undefined
         };
         this.selectedRemoteParticipants = new Set();
@@ -123,7 +124,7 @@ export default class CallCard extends React.Component {
         this.call.feature(Features.Spotlight).off('spotlightChanged', this.spotlightStateChangedHandler);
         this.call.feature(Features.RaiseHand).off('raisedHandEvent', this.raiseHandChangedHandler);
         this.call.feature(Features.RaiseHand).off('loweredHandEvent', this.raiseHandChangedHandler);
-        this.call.feature(Features.Recording).off('isRecordingActiveChanged',()=>{});
+        this.call.feature(Features.Recording).off('isRecordingActiveChanged', () => { });
         if (Features.Reaction) {
             this.call.feature(Features.Reaction).off('reaction', this.reactionChangeHandler);
         }
@@ -193,7 +194,7 @@ export default class CallCard extends React.Component {
             this.deviceManager.on('selectedMicrophoneChanged', () => {
                 this.setState({ selectedMicrophoneDeviceId: this.deviceManager.selectedMicrophone?.id });
             });
-            
+
             const callStateChanged = () => {
                 console.log('Call state changed ', this.call.state);
                 if (this.call.state !== 'None' &&
@@ -203,8 +204,8 @@ export default class CallCard extends React.Component {
                         this.callFinishConnectingResolve();
                     }
                 }
-                if (this.call.state === 'Connected') {    
-                    this.setState({ recordingResponse: undefined });               
+                if (this.call.state === 'Connected') {
+                    this.setState({ recordingResponse: undefined });
                     this.call.info.getServerCallId().then(result => {
                         this.setState({ serverCallId: result });
                         const serverCallId = result;
@@ -219,42 +220,42 @@ export default class CallCard extends React.Component {
                             recordingFormat: recordingFormat
                         };
 
-                        if ((this.isRecordCall === true && this.call.direction === 'Outgoing' && this.call.tsCall.conversationType !=='groupCall') || (this.isRecordCall === true && this.call.tsCall.conversationType ==='groupCall' && this.call.remoteParticipants.length === 0)) {
-                            var startRecordingTimer = (new Date()).getTime(),endRecordingTimer;
+                        if ((this.isRecordCall === true && this.call.direction === 'Outgoing' && this.call.tsCall.conversationType !== 'groupCall') || (this.isRecordCall === true && this.call.tsCall.conversationType === 'groupCall' && this.call.remoteParticipants.length === 0)) {
+                            var startRecordingTimer = (new Date()).getTime(), endRecordingTimer;
                             recordingService.recordCall(recordRequest)
                                 .then(res => {
-                                   this.setState({ recordingResponse: res });
-                                   this.setState({recordingId: res.recordingId})
-                                   localStorage.setItem('downloadPath',`${res.recordingId}.${recordingFormat}`)
-                                   if(res && res.recordingId){
-                                    try{
-                                        endRecordingTimer = (new Date()).getTime();
-                                        const ms = endRecordingTimer - startRecordingTimer;
-                                        const recordingDelay = Math.floor((ms/1000) % 60)+' Sec';
-                                        const updateDelayLog = {...res,recordingDelay};
-                                        this.setState({ recordingResponse: updateDelayLog });
-                                        const startTime = new Date();
-                                        const playStartTime = startTime.toLocaleTimeString()
-                                        const updatedLog = { ...updateDelayLog, playStartTime};
-                                        this.setState({ recordingResponse: updatedLog });
-                                        this.handleOutgoingAudioEffect();
-                                        
-                                        setTimeout(() => {
+                                    this.setState({ recordingResponse: res });
+                                    this.setState({ recordingId: res.recordingId })
+                                    localStorage.setItem('downloadPath', `${res.recordingId}.${recordingFormat}`)
+                                    if (res && res.recordingId) {
+                                        try {
+                                            endRecordingTimer = (new Date()).getTime();
+                                            const ms = endRecordingTimer - startRecordingTimer;
+                                            const recordingDelay = Math.floor((ms / 1000) % 60) + ' Sec';
+                                            const updateDelayLog = { ...res, recordingDelay };
+                                            this.setState({ recordingResponse: updateDelayLog });
+                                            const startTime = new Date();
+                                            const playStartTime = startTime.toLocaleTimeString()
+                                            const updatedLog = { ...updateDelayLog, playStartTime };
+                                            this.setState({ recordingResponse: updatedLog });
                                             this.handleOutgoingAudioEffect();
-                                            const endTime = new Date();
-                                            const playEndTime = endTime.toLocaleTimeString()
-                                            const endLog = { ...updatedLog, playEndTime};
-                                            this.setState({ recordingResponse: endLog });
-                                            this.handleStopRecording().then(response =>{
-                                                if(response){
-                                                    this.call.hangUp();
-                                                }
-                                            });
-                                        }, 10000);
-                                    }catch(error){
-                                        console.log(error);
+
+                                            setTimeout(() => {
+                                                this.handleOutgoingAudioEffect();
+                                                const endTime = new Date();
+                                                const playEndTime = endTime.toLocaleTimeString()
+                                                const endLog = { ...updatedLog, playEndTime };
+                                                this.setState({ recordingResponse: endLog });
+                                                this.handleStopRecording().then(response => {
+                                                    if (response) {
+                                                        this.call.hangUp();
+                                                    }
+                                                });
+                                            }, 10000);
+                                        } catch (error) {
+                                            console.log(error);
+                                        }
                                     }
-                                   }
                                 })
                                 .catch(error => {
                                     console.error('Error recording call:', error);
@@ -277,10 +278,10 @@ export default class CallCard extends React.Component {
             callStateChanged();
             this.call.on('stateChanged', callStateChanged);
 
-            this.call.feature(Features.Recording).on('isRecordingActiveChanged',()=>{
+            this.call.feature(Features.Recording).on('isRecordingActiveChanged', () => {
                 const isRecordingActive = this.call.feature(Features.Recording).isRecordingActive;
-                const notify = isRecordingActive ? 'Recording started' : undefined ;
-                this.setState({recordingStartedNotification : notify});
+                const notify = isRecordingActive ? 'Recording started' : undefined;
+                this.setState({ recordingStartedNotification: notify });
             });
 
             this.call.on('idChanged', () => {
@@ -1032,20 +1033,20 @@ export default class CallCard extends React.Component {
                 recordingChannel: recordingChannel,
                 recordingFormat: recordingFormat
             };
-            var startRecordingTimer = (new Date()).getTime(),endRecordingTimer;
+            var startRecordingTimer = (new Date()).getTime(), endRecordingTimer;
             recordingService.startRecording(recordRequest)
                 .then(res => {
                     this.setState({ recordingResponse: res });
                     this.setState({ recordingId: res.recordingId });
-                    localStorage.setItem('downloadPath',`${res.recordingId}.${recordingFormat}`)
+                    localStorage.setItem('downloadPath', `${res.recordingId}.${recordingFormat}`)
                     this.setState({ isRecordingActive: true });
                     endRecordingTimer = (new Date()).getTime();
                     const ms = endRecordingTimer - startRecordingTimer;
-                    const recordingDelay = Math.floor((ms/1000) % 60)+' Sec';
-                    const updateDelayLog = {...res,recordingDelay};
+                    const recordingDelay = Math.floor((ms / 1000) % 60) + ' Sec';
+                    const updateDelayLog = { ...res, recordingDelay };
                     this.setState({ recordingResponse: updateDelayLog })
                     const recordingStuatus = 'Started';
-                    const updatedLog = { ...updateDelayLog, recordingStuatus};
+                    const updatedLog = { ...updateDelayLog, recordingStuatus };
                     this.setState({ recordingResponse: updatedLog });
                 })
                 .catch(error => {
@@ -1058,58 +1059,58 @@ export default class CallCard extends React.Component {
     }
     handlePauseRecording = async () => {
         const recordingId = this.state.recordingId;
-        if(recordingId !== undefined){
+        if (recordingId !== undefined) {
             const res = await recordingService.pauseRecording(recordingId);
             if (res) {
                 this.setState({ isRecordingPaused: true });
                 const recordingStuatus = 'Paused';
                 const recordingResponse = this.state.recordingResponse;
-                const updatedLog = { ...recordingResponse, recordingStuatus};
+                const updatedLog = { ...recordingResponse, recordingStuatus };
                 this.setState({ recordingResponse: updatedLog });
             }
         }
-        else{
+        else {
             alert("Recording Id is null. Can not pause recording")
         }
-       
+
     }
     handleResumeRecording = async () => {
         const recordingId = this.state.recordingId;
-        if(recordingId !== undefined){
+        if (recordingId !== undefined) {
             const res = await recordingService.resumeRecording(recordingId);
             if (res) {
                 this.setState({ isRecordingPaused: false });
                 const recordingStuatus = 'Resumed';
                 const recordingResponse = this.state.recordingResponse;
-                const updatedLog = { ...recordingResponse, recordingStuatus};
+                const updatedLog = { ...recordingResponse, recordingStuatus };
                 this.setState({ recordingResponse: updatedLog });
             }
         }
-       
+
     }
     handleStopRecording = async () => {
         const recordingId = this.state.recordingId;
-        if(recordingId !== undefined){
+        if (recordingId !== undefined) {
             const res = await recordingService.stopRecording(recordingId);
             if (res) {
                 this.setState({ isRecordingActive: false });
                 const recordingStuatus = 'Stopped';
                 const recordingResponse = this.state.recordingResponse;
-                const updatedLog = { ...recordingResponse, recordingStuatus};
+                const updatedLog = { ...recordingResponse, recordingStuatus };
                 this.setState({ recordingResponse: updatedLog });
-                localStorage.setItem("recordingResponse",JSON.stringify(this.state.recordingResponse));
+                localStorage.setItem("recordingResponse", JSON.stringify(this.state.recordingResponse));
                 return true;
             }
         }
-        else{
+        else {
             alert("Recording Id is null. Can not stop recording")
         }
-       
+
     }
 
     handleRecordConstraint = (constraints) => {
         if (constraints) {
-            this.setState({inCallRecordingConstraint:constraints})
+            this.setState({ inCallRecordingConstraint: constraints })
         }
     }
 
@@ -1154,14 +1155,14 @@ export default class CallCard extends React.Component {
                 }
 
                 {
-                    !this.isRecordCall && this.state.callState === 'Connected' && 
+                    !this.isRecordCall && this.state.callState === 'Connected' &&
                     <div className="dropdown-pos">
                         <h3 className="mb-1">Record Constraints</h3>
-                            <RecordConstraint
-                                onChange={this.handleRecordConstraint}
-                            />
+                        <RecordConstraint
+                            onChange={this.handleRecordConstraint}
+                        />
                         <br></br>
-                    </div>       
+                    </div>
                 }
 
                 <div className="ms-Grid-row">
