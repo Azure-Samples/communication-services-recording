@@ -32,6 +32,7 @@ export default class MakeCall extends React.Component {
         this.tokenCredential = null;
         this.recordConstraints = null;
         this.logInComponentRef = React.createRef();
+        this.roomsId = null;
 
         this.state = {
             id: undefined,
@@ -222,6 +223,16 @@ export default class MakeCall extends React.Component {
             this.setState({ downloadContentResponse: undefined });
             const callOptions = await this.getCallOptions({ video: withVideo, micMuted: false });
             this.callAgent.join({ groupId: this.destinationGroup.value }, callOptions);
+        } catch (e) {
+            console.error('Failed to join a call', e);
+            this.setState({ callError: 'Failed to join a call: ' + e });
+        }
+    };
+
+    joinRooms = async (withVideo) => {
+        try {
+            const callOptions = await this.getCallOptions({ video: withVideo, micMuted: false });
+            this.callAgent.join({ roomId: this.roomsId.value }, callOptions);
         } catch (e) {
             console.error('Failed to join a call', e);
             this.setState({ callError: 'Failed to join a call: ' + e });
@@ -503,6 +514,30 @@ export default class MakeCall extends React.Component {
                                                 text="Join group call with video"
                                                 disabled={this.state.call || !this.state.loggedIn}
                                                 onClick={() => this.joinGroup(true)}>
+                                            </PrimaryButton>
+                                        </div>
+                                        <div className="mt-5">
+                                            <h2 className="mb-0">Join a Rooms call</h2>
+                                            <div className="ms-Grid-row">
+                                                <div className="md-Grid-col ml-2 ms-sm11 ms-md11 ms-lg9 ms-xl9 ms-xxl11">
+                                                    <TextField className="mb-3 mt-0"
+                                                        disabled={this.state.call || !this.state.loggedIn}
+                                                        label="Rooms id"
+                                                        placeholder="<GUID>"
+                                                        componentRef={(val) => this.roomsId = val} />
+                                                </div>
+                                            </div>
+                                            <PrimaryButton className="primary-button"
+                                                iconProps={{ iconName: 'Group', style: { verticalAlign: 'middle', fontSize: 'large' } }}
+                                                text="Join Rooms call"
+                                                disabled={this.state.call || !this.state.loggedIn}
+                                                onClick={() => this.joinRooms(false)}>
+                                            </PrimaryButton>
+                                            <PrimaryButton className="primary-button"
+                                                iconProps={{ iconName: 'Video', style: { verticalAlign: 'middle', fontSize: 'large' } }}
+                                                text="Join Rooms call with video"
+                                                disabled={this.state.call || !this.state.loggedIn}
+                                                onClick={() => this.joinRooms(true)}>
                                             </PrimaryButton>
                                         </div>
                                     </div>
