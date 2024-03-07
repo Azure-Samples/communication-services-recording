@@ -18,6 +18,9 @@ namespace incoming_call_recording.Controllers
         private string hostUrl = "";
         private string cognitiveServiceEndpoint = "";
         private static string recordingId = "";
+        private bool isPauseOnStart;
+        private bool isByos;
+        private readonly string bringYourOwnStorageUrl;
         // private static string targetId = "8:acs:19ae37ff-1a44-4e19-aade-198eedddbdf2_0000001b-e3e8-dec7-0d8b-084822007f54";
         public EventsController(ILogger<EventsController> logger
             , IConfiguration configuration,
@@ -31,6 +34,9 @@ namespace incoming_call_recording.Controllers
             this.callAutomationClient = callAutomationClient;
             this.logger = logger;
             this.configuration = configuration;
+            this.isPauseOnStart = configuration.GetValue<bool>("IsPauseOnStart");
+            this.isByos = configuration.GetValue<bool>("IsByos");
+            this.bringYourOwnStorageUrl = configuration.GetValue<string>("BringYourOwnStorageUrl");
         }
 
         [HttpPost]
@@ -75,7 +81,10 @@ namespace incoming_call_recording.Controllers
                     var callbackUri = new Uri(hostUrl + $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
                     var options = new AnswerCallOptions(incomingCallContext, callbackUri)
                     {
-                        CognitiveServicesEndpoint = new Uri(this.cognitiveServiceEndpoint)
+                        CallIntelligenceOptions = new CallIntelligenceOptions
+                        {
+                            CognitiveServicesEndpoint = new Uri(this.cognitiveServiceEndpoint)
+                        } 
                     };
 
                     AnswerCallResult answerCallResult = await this.callAutomationClient.AnswerCallAsync(options);
@@ -92,8 +101,11 @@ namespace incoming_call_recording.Controllers
                         {
                             RecordingContent = RecordingContent.Audio,
                             RecordingChannel = RecordingChannel.Unmixed,
-                            RecordingFormat = RecordingFormat.Wav
+                            RecordingFormat = RecordingFormat.Wav,
+                            PauseOnStart = this.isPauseOnStart,
+                            ExternalStorage = this.isByos && !string.IsNullOrEmpty(this.bringYourOwnStorageUrl) ? new BlobStorage(new Uri(this.bringYourOwnStorageUrl)) : null
                         };
+                        logger.LogInformation($"Pause On Start-->: {recordingOptions.PauseOnStart}");
                         var recordingTask = this.callAutomationClient.GetCallRecording().StartAsync(recordingOptions);
                         await Task.WhenAll(playTask, recordingTask);
                         recordingId = recordingTask.Result.Value.RecordingId;
@@ -103,6 +115,29 @@ namespace incoming_call_recording.Controllers
                     {
                         logger.LogInformation($"Play completed event received for connection id: {playCompletedEvent.CallConnectionId}");
                         Console.Beep();
+
+                        var state = await this.GetRecordingState(recordingId);
+
+                        if (state == "active")
+                        {
+                            await this.callAutomationClient.GetCallRecording().PauseAsync(recordingId);
+                            logger.LogInformation($"Recording is Paused.");
+                            await this.GetRecordingState(recordingId);
+                        }
+                        else
+                        {
+                            await this.callAutomationClient.GetCallRecording().ResumeAsync(recordingId);
+                            logger.LogInformation($"Recording is Resumed.");
+                            await this.GetRecordingState(recordingId);
+                        }
+
+                        await this.callAutomationClient.GetCallRecording().StopAsync(recordingId);
+                        logger.LogInformation($"Recording is Stopped.");
+
+                        var callConnection = this.callAutomationClient.GetCallConnection(playCompletedEvent.CallConnectionId);
+
+                        await callConnection.HangUpAsync(true);
+
                     });
                     this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayFailed>(answerCallResult.CallConnection.CallConnectionId, async (playFailedEvent) =>
                     {
@@ -110,13 +145,18 @@ namespace incoming_call_recording.Controllers
                         var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
                         var resultInformation = playFailedEvent.ResultInformation;
                         logger.LogError("Encountered error during play, message={msg}, code={code}, subCode={subCode}", resultInformation?.Message, resultInformation?.Code, resultInformation?.SubCode);
+                        await this.callAutomationClient.GetCallConnection(playFailedEvent.CallConnectionId).HangUpAsync(true);
                     });
                 }
 
                 if (eventData is AcsRecordingFileStatusUpdatedEventData statusUpdated)
                 {
+                    var metadataLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].MetadataLocation;
                     var contentLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation;
-                    await this.downloadRecording(contentLocation);
+                    if (!this.isByos)
+                    {
+                        await this.downloadRecording(contentLocation);
+                    }
                 }
             }
             return Ok();
@@ -159,8 +199,18 @@ namespace incoming_call_recording.Controllers
 
         private async Task downloadRecording(string contentLocation)
         {
+            string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),"Downloads");    
             var recordingDownloadUri = new Uri(contentLocation);
-            var response = await this.callAutomationClient.GetCallRecording().DownloadToAsync(recordingDownloadUri, $"test.wav");
+            var response = await this.callAutomationClient.GetCallRecording().DownloadToAsync(recordingDownloadUri, $"{downloadsPath}\\test.wav");
+        }
+
+        private async Task<string> GetRecordingState(string recordingId)
+        {
+            var result = await this.callAutomationClient.GetCallRecording().GetStateAsync(recordingId);
+            string state = result.Value.RecordingState.ToString();
+            logger.LogInformation($"Recording Status:->  {state}");
+            logger.LogInformation($"Recording Type:-> { result.Value.RecordingType.ToString()}");
+            return state;
         }
     }
 }
