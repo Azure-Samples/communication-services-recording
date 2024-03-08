@@ -21,6 +21,7 @@ namespace incoming_call_recording.Controllers
         private bool isPauseOnStart;
         private bool isByos;
         private readonly string bringYourOwnStorageUrl;
+        private readonly string teamsUser;
         // private static string targetId = "8:acs:19ae37ff-1a44-4e19-aade-198eedddbdf2_0000001b-e3e8-dec7-0d8b-084822007f54";
         public EventsController(ILogger<EventsController> logger
             , IConfiguration configuration,
@@ -37,6 +38,7 @@ namespace incoming_call_recording.Controllers
             this.isPauseOnStart = configuration.GetValue<bool>("IsPauseOnStart");
             this.isByos = configuration.GetValue<bool>("IsByos");
             this.bringYourOwnStorageUrl = configuration.GetValue<string>("BringYourOwnStorageUrl");
+            this.teamsUser = configuration.GetValue<string>("TeamsUser");
         }
 
         [HttpPost]
@@ -109,12 +111,19 @@ namespace incoming_call_recording.Controllers
                         var recordingTask = this.callAutomationClient.GetCallRecording().StartAsync(recordingOptions);
                         await Task.WhenAll(playTask, recordingTask);
                         recordingId = recordingTask.Result.Value.RecordingId;
-                        logger.LogInformation($"Call recording id: {recordingId}");
+                        logger.LogInformation($"Call recording id--> {recordingId}");
                     }
                     this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
                     {
                         logger.LogInformation($"Play completed event received for connection id: {playCompletedEvent.CallConnectionId}");
                         Console.Beep();
+
+                        if (!string.IsNullOrEmpty(this.teamsUser))
+                        {
+                            var participant = new MicrosoftTeamsUserIdentifier(this.teamsUser);
+                            CallInvite callInvite = new CallInvite(participant);
+                            await answerCallResult.CallConnection.AddParticipantAsync(callInvite);
+                        }
 
                         var state = await this.GetRecordingState(recordingId);
 
@@ -131,6 +140,7 @@ namespace incoming_call_recording.Controllers
                             await this.GetRecordingState(recordingId);
                         }
 
+                        await Task.Delay(5000);
                         await this.callAutomationClient.GetCallRecording().StopAsync(recordingId);
                         logger.LogInformation($"Recording is Stopped.");
 
@@ -146,6 +156,11 @@ namespace incoming_call_recording.Controllers
                         var resultInformation = playFailedEvent.ResultInformation;
                         logger.LogError("Encountered error during play, message={msg}, code={code}, subCode={subCode}", resultInformation?.Message, resultInformation?.Code, resultInformation?.SubCode);
                         await this.callAutomationClient.GetCallConnection(playFailedEvent.CallConnectionId).HangUpAsync(true);
+                    });
+
+                    this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<TeamsComplianceRecordingStateChanged>(answerCallResult.CallConnection.CallConnectionId, async (teamsComplianceEvent) =>
+                    {
+                        logger.LogInformation($"Teams Compliance Changed event received for connection id: {teamsComplianceEvent.CallConnectionId}");
                     });
                 }
 
