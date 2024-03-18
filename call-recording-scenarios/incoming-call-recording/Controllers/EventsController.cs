@@ -124,7 +124,7 @@ namespace incoming_call_recording.Controllers
                             CallInvite callInvite = new CallInvite(participant);
                             await answerCallResult.CallConnection.AddParticipantAsync(callInvite);
                         }
-
+                        
                         var state = await this.GetRecordingState(recordingId);
 
                         if (state == "active")
@@ -146,7 +146,7 @@ namespace incoming_call_recording.Controllers
 
                         var callConnection = this.callAutomationClient.GetCallConnection(playCompletedEvent.CallConnectionId);
 
-                        await callConnection.HangUpAsync(true);
+                        await callConnection.HangUpAsync(false);
 
                     });
                     this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayFailed>(answerCallResult.CallConnection.CallConnectionId, async (playFailedEvent) =>
