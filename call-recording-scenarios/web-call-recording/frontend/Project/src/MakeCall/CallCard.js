@@ -45,6 +45,7 @@ export default class CallCard extends React.Component {
         this.dominantSpeakersFeature = this.call.feature(Features.DominantSpeakers);
         this.recordCallConstraints = props.recordCallConstraint;
         this.isRecordCall = props.isRecord;
+        this.isTeamsUser = props.isTeamsUser;
         if (Features.Reaction) {
             this.meetingReaction = this.call.feature(Features.Reaction);
         }
