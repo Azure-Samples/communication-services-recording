@@ -125,6 +125,8 @@ namespace incoming_call_recording.Controllers
                             await answerCallResult.CallConnection.AddParticipantAsync(callInvite);
                         }
 
+                        await Task.Delay(5000);
+
                         var state = await this.GetRecordingState(recordingId);
 
                         if (state == "active")
@@ -132,9 +134,13 @@ namespace incoming_call_recording.Controllers
                             await this.callAutomationClient.GetCallRecording().PauseAsync(recordingId);
                             logger.LogInformation($"Recording is Paused.");
                             await this.GetRecordingState(recordingId);
+                            await Task.Delay(5000);
+                            await this.callAutomationClient.GetCallRecording().ResumeAsync(recordingId);
+                            logger.LogInformation($"Recording is resumed.");
                         }
                         else
                         {
+                            await Task.Delay(5000);
                             await this.callAutomationClient.GetCallRecording().ResumeAsync(recordingId);
                             logger.LogInformation($"Recording is Resumed.");
                             await this.GetRecordingState(recordingId);
@@ -146,7 +152,7 @@ namespace incoming_call_recording.Controllers
 
                         var callConnection = this.callAutomationClient.GetCallConnection(playCompletedEvent.CallConnectionId);
 
-                        await callConnection.HangUpAsync(true);
+                        await callConnection.HangUpAsync(false);
 
                     });
                     this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayFailed>(answerCallResult.CallConnection.CallConnectionId, async (playFailedEvent) =>
@@ -162,6 +168,18 @@ namespace incoming_call_recording.Controllers
                     {
                         logger.LogInformation($"Teams Compliance Changed event received for connection id: {teamsComplianceEvent.CallConnectionId}");
                     });
+
+                    this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<AddParticipantSucceeded>(answerCallResult.CallConnection.CallConnectionId, async (teamsComplianceEvent) =>
+                    {
+                        logger.LogInformation($"AddParticipantSucceeded event received for connection id: {teamsComplianceEvent.CallConnectionId}");
+                        logger.LogInformation($"Participant: {teamsComplianceEvent.Participant.RawId.ToString()}");
+                    });
+
+                    this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<AddParticipantFailed>(answerCallResult.CallConnection.CallConnectionId, async (teamsComplianceEvent) =>
+                    {
+                        logger.LogInformation($"AddParticipantFailed event received for connection id: {teamsComplianceEvent.CallConnectionId}");
+                        logger.LogInformation($"Message: {teamsComplianceEvent.ResultInformation?.Message.ToString()}");
+                    });
                 }
 
                 if (eventData is AcsRecordingFileStatusUpdatedEventData statusUpdated)
@@ -171,6 +189,7 @@ namespace incoming_call_recording.Controllers
                     if (!this.isByos)
                     {
                         await this.downloadRecording(contentLocation);
+                        await this.DownloadRecordingMetadata(metadataLocation);
                     }
                 }
             }
@@ -226,6 +245,20 @@ namespace incoming_call_recording.Controllers
             logger.LogInformation($"Recording Status:->  {state}");
             logger.LogInformation($"Recording Type:-> { result.Value.RecordingType.ToString()}");
             return state;
+        }
+
+        private async Task DownloadRecordingMetadata(string metadataLocation)
+        {
+            if (!string.IsNullOrEmpty(metadataLocation))
+            {
+                string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+                var recordingDownloadUri = new Uri(metadataLocation);
+                var response = await this.callAutomationClient.GetCallRecording().DownloadToAsync(recordingDownloadUri, $"{downloadsPath}\\recordingMetadata.json");
+            }
+            else
+            {
+                this.logger.LogError("Metadata location is empty.");
+            }
         }
     }
 }
