@@ -343,7 +343,7 @@ namespace incoming_call_recording.Controllers
                             async (eventData) =>
                             {
                                 logger.LogInformation("Received SendDtmfTonesCompleted event");
-                                await answerCallResult.CallConnection.RemoveParticipantAsync(target);
+                                await answerCallResult.CallConnection.RemoveParticipantAsync(CommunicationIdentifier.FromRawId(target.RawId));
                                 logger.LogInformation($"Send Dtmf tone completed. {target.PhoneNumber} will be removed from call.");
                             });
 
@@ -557,13 +557,13 @@ namespace incoming_call_recording.Controllers
         }
         public async Task StartContinuousDtmfAsync(CallMedia callMedia)
         {
-            await callMedia.StartContinuousDtmfRecognitionAsync(callee);
+            await callMedia.StartContinuousDtmfRecognitionAsync(CommunicationIdentifier.FromRawId(targetPhonenumber));
             Console.WriteLine("Continuous Dtmf recognition started. Press one on dialpad.");
         }
 
         public async Task StopContinuousDtmfAsync(CallMedia callMedia)
         {
-            await callMedia.StopContinuousDtmfRecognitionAsync(callee);
+            await callMedia.StopContinuousDtmfRecognitionAsync(CommunicationIdentifier.FromRawId(targetPhonenumber));
             Console.WriteLine("Continuous Dtmf recognition stopped. Wait for sending dtmf tones.");
         }
 
@@ -575,7 +575,7 @@ namespace incoming_call_recording.Controllers
             DtmfTone.One
         };
 
-            await callMedia.SendDtmfTonesAsync(tones, callee);
+            await callMedia.SendDtmfTonesAsync(tones, CommunicationIdentifier.FromRawId(targetPhonenumber));
             Console.WriteLine("Send dtmf tones started. Respond over phone.");
         }
 
