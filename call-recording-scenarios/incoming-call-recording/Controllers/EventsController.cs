@@ -22,10 +22,12 @@ namespace incoming_call_recording.Controllers
         private bool isByos;
         private bool isTeamsComplianceUser;
         private bool isRejectCall;
+        private bool isCancelAddParticipant;
         private readonly string bringYourOwnStorageUrl;
         private readonly string teamsComplianceUserId;
         private readonly string acsPhonenumber;
         private readonly string targetPhonenumber;
+        private readonly string redirectUser;
         // private static string targetId = "8:acs:19ae37ff-1a44-4e19-aade-198eedddbdf2_0000001b-e3e8-dec7-0d8b-084822007f54";
         public EventsController(ILogger<EventsController> logger
             , IConfiguration configuration,
@@ -40,6 +42,7 @@ namespace incoming_call_recording.Controllers
             this.logger = logger;
             this.configuration = configuration;
             this.isPauseOnStart = configuration.GetValue<bool>("IsPauseOnStart");
+            this.isCancelAddParticipant = configuration.GetValue<bool>("IsCancelAddParticipant");
             this.isByos = configuration.GetValue<bool>("IsByos");
             this.isTeamsComplianceUser = configuration.GetValue<bool>("IsTeamsComplianceUser");
             this.isRejectCall = configuration.GetValue<bool>("IsRejectCall");
@@ -47,6 +50,7 @@ namespace incoming_call_recording.Controllers
             this.teamsComplianceUserId = configuration.GetValue<string>("TeamsComplianceUserId");
             this.acsPhonenumber = configuration.GetValue<string>("AcsPhonenumber");
             this.targetPhonenumber = configuration.GetValue<string>("TargetPhonenumber");
+            this.redirectUser = configuration.GetValue<string>("RedirectUser");
         }
         string handlePrompt = "Welcome to the Contoso Utilities. Thank you!";
         string pstnUserPrompt = "Hello this is contoso recognition test please confirm or cancel to proceed further.";
@@ -118,6 +122,7 @@ namespace incoming_call_recording.Controllers
 
                         AnswerCallResult answerCallResult = await this.callAutomationClient.AnswerCallAsync(options);
                         logger.LogInformation($"Answer call result: {answerCallResult.CallConnection.CallConnectionId}");
+
                         var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
                         //Use EventProcessor to process CallConnected event
                         var answer_result = await answerCallResult.WaitForEventProcessorAsync();
@@ -133,10 +138,10 @@ namespace incoming_call_recording.Controllers
                                 RecordingContent = RecordingContent.Audio,
                                 RecordingChannel = RecordingChannel.Unmixed,
                                 RecordingFormat = RecordingFormat.Wav,
-                                //PauseOnStart = this.isPauseOnStart,
-                                //ExternalStorage = this.isByos && !string.IsNullOrEmpty(this.bringYourOwnStorageUrl) ? new BlobStorage(new Uri(this.bringYourOwnStorageUrl)) : null
+                                PauseOnStart = this.isPauseOnStart,
+                                ExternalStorage = this.isByos && !string.IsNullOrEmpty(this.bringYourOwnStorageUrl) ? new BlobStorage(new Uri(this.bringYourOwnStorageUrl)) : null
                             };
-                            //logger.LogInformation($"Pause On Start-->: {recordingOptions.PauseOnStart}");
+                            logger.LogInformation($"Pause On Start-->: {recordingOptions.PauseOnStart}");
                             var recordingTask = this.callAutomationClient.GetCallRecording().StartAsync(recordingOptions);
                             await Task.WhenAll(playTask, recordingTask);
                             recordingId = recordingTask.Result.Value.RecordingId;
@@ -151,6 +156,19 @@ namespace incoming_call_recording.Controllers
 
                             var addParticipantResult = await answerCallResult.CallConnection.AddParticipantAsync(addParticipantOptions);
                             logger.LogInformation($"Adding Participant to the call: {addParticipantResult.Value?.InvitationId}");
+
+                            // cancel the request with optional parameters
+                            if (isCancelAddParticipant)
+                            {
+                                var cancelAddParticipantOperationOptions = new CancelAddParticipantOperationOptions(addParticipantResult.Value.InvitationId)
+                                {
+                                    OperationContext = "operationContext",
+                                    OperationCallbackUri = new Uri(hostUrl)
+                                };
+                                await answerCallResult.CallConnection.CancelAddParticipantOperationAsync(cancelAddParticipantOperationOptions);
+                                logger.LogInformation($"Cancel Adding Participant to the call");
+
+                            }
 
                         }
 
@@ -183,8 +201,8 @@ namespace incoming_call_recording.Controllers
                                     // Take action for Recognition through DTMF
                                     var context = recognizeCompletedEvent.OperationContext;
                                     logger.LogInformation($"Current context-->{context}");
-                                    await answerCallResult.CallConnection.RemoveParticipantAsync(callee);
-                                   
+                                    await answerCallResult.CallConnection.RemoveParticipantAsync(CommunicationIdentifier.FromRawId(callerId));
+
                                     break;
                                 case SpeechResult speechResult:
                                     // Take action for Recognition through Choices 
@@ -276,13 +294,12 @@ namespace incoming_call_recording.Controllers
 
                                 logger.LogInformation($"Total participants in call: {participantCount}");
                                 logger.LogInformation($"Participants: {JsonSerializer.Serialize(participantList)}");
-
-                                var muteResponse = await answerCallResult.CallConnection.MuteParticipantAsync(callee);
+                                var muteResponse = await answerCallResult.CallConnection.MuteParticipantAsync(CommunicationIdentifier.FromRawId(callerId));
 
                                 if (muteResponse.GetRawResponse().Status == 200)
                                 {
                                     logger.LogInformation("Participant is muted. Waiting for confirmation...");
-                                    var participant = await answerCallResult.CallConnection.GetParticipantAsync(callee);
+                                    var participant = await answerCallResult.CallConnection.GetParticipantAsync(CommunicationIdentifier.FromRawId(callerId));
                                     logger.LogInformation($"Is participant muted: {participant.Value.IsMuted}");
                                     logger.LogInformation("Mute participant test completed.");
                                 }
@@ -308,7 +325,7 @@ namespace incoming_call_recording.Controllers
                             logger.LogInformation($"RemoveParticipantSucceeded event received for connection id: {eventData.CallConnectionId}");
                             logger.LogInformation("Received RemoveParticipantSucceeded event");
                             await HandlePlayAsync(callConnectionMedia, removeParticipantSucceededPrompt, "removeParticipantSucceededPromptContext");
-                           // await HandlePlayLoopAsync(callConnectionMedia, removeParticipantSucceededPrompt, "removeParticipantSucceededPromptContext");
+                            // await HandlePlayLoopAsync(callConnectionMedia, removeParticipantSucceededPrompt, "removeParticipantSucceededPromptContext");
                             //await callConnectionMedia.CancelAllMediaOperationsAsync();
                         });
 
@@ -319,7 +336,7 @@ namespace incoming_call_recording.Controllers
                                     logger.LogInformation("Received ContinuousDtmfRecognitionToneReceived event");
                                     logger.LogInformation($"Tone received:--> {eventData.Tone}");
                                     logger.LogInformation($"SequenceId:--> {eventData.SequenceId}");
-                                     await StopContinuousDtmfAsync(callConnectionMedia);
+                                    await StopContinuousDtmfAsync(callConnectionMedia);
                                 });
 
                         this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<ContinuousDtmfRecognitionToneFailed>(
@@ -335,7 +352,7 @@ namespace incoming_call_recording.Controllers
                             async (eventData) =>
                             {
                                 logger.LogInformation("Received ContinuousDtmfRecognitionStopped event");
-                                  await StartSendingDtmfToneAsync(callConnectionMedia);
+                                await StartSendingDtmfToneAsync(callConnectionMedia);
                             });
 
                         this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<SendDtmfTonesCompleted>(
@@ -396,11 +413,11 @@ namespace incoming_call_recording.Controllers
                 {
                     var metadataLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].MetadataLocation;
                     var contentLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation;
-                    //if (!this.isByos)
-                    //{
+                    if (!this.isByos)
+                    {
                         await this.downloadRecording(contentLocation);
                         await this.DownloadRecordingMetadata(metadataLocation);
-                   // }
+                    }
                 }
             }
             return Ok();
@@ -453,7 +470,7 @@ namespace incoming_call_recording.Controllers
             var result = await this.callAutomationClient.GetCallRecording().GetStateAsync(recordingId);
             string state = result.Value.RecordingState.ToString();
             logger.LogInformation($"Recording Status:->  {state}");
-            //logger.LogInformation($"Recording Type:-> { result.Value.RecordingType.ToString()}");
+            logger.LogInformation($"Recording Type:-> { result.Value.RecordingType.ToString()}");
             return state;
         }
 
@@ -552,7 +569,7 @@ namespace incoming_call_recording.Controllers
                 VoiceName = "en-US-NancyNeural"
             };
 
-            var playOptions = new PlayToAllOptions(playSource) { OperationContext = context,Loop=true };
+            var playOptions = new PlayToAllOptions(playSource) { OperationContext = context, Loop = true };
             await callConnectionMedia.PlayToAllAsync(playOptions);
         }
         private async Task StartContinuousDtmfAsync(CallMedia callMedia)
