@@ -511,7 +511,7 @@ namespace incoming_call_recording.Controllers
         }
 
 
-        async Task HandleDtmfRecognizeAsync(CallMedia callConnectionMedia, string callerId, string message, string context)
+        private async Task HandleDtmfRecognizeAsync(CallMedia callConnectionMedia, string callerId, string message, string context)
         {
             // Play greeting message
             var greetingPlaySource = new TextSource(message)
@@ -533,7 +533,7 @@ namespace incoming_call_recording.Controllers
             var recognize_result = await callConnectionMedia.StartRecognizingAsync(recognizeOptions);
         }
 
-        async Task HandlePlayAsync(CallMedia callConnectionMedia, string textToPlay, string context)
+        private async Task HandlePlayAsync(CallMedia callConnectionMedia, string textToPlay, string context)
         {
             // Play message
             var playSource = new TextSource(textToPlay)
@@ -544,7 +544,7 @@ namespace incoming_call_recording.Controllers
             var playOptions = new PlayToAllOptions(playSource) { OperationContext = context };
             await callConnectionMedia.PlayToAllAsync(playOptions);
         }
-        async Task HandlePlayLoopAsync(CallMedia callConnectionMedia, string textToPlay, string context)
+        private async Task HandlePlayLoopAsync(CallMedia callConnectionMedia, string textToPlay, string context)
         {
             // Play message
             var playSource = new TextSource(textToPlay)
@@ -555,19 +555,19 @@ namespace incoming_call_recording.Controllers
             var playOptions = new PlayToAllOptions(playSource) { OperationContext = context,Loop=true };
             await callConnectionMedia.PlayToAllAsync(playOptions);
         }
-        public async Task StartContinuousDtmfAsync(CallMedia callMedia)
+        private async Task StartContinuousDtmfAsync(CallMedia callMedia)
         {
             await callMedia.StartContinuousDtmfRecognitionAsync(CommunicationIdentifier.FromRawId(targetPhonenumber));
             Console.WriteLine("Continuous Dtmf recognition started. Press one on dialpad.");
         }
 
-        public async Task StopContinuousDtmfAsync(CallMedia callMedia)
+        private async Task StopContinuousDtmfAsync(CallMedia callMedia)
         {
             await callMedia.StopContinuousDtmfRecognitionAsync(CommunicationIdentifier.FromRawId(targetPhonenumber));
             Console.WriteLine("Continuous Dtmf recognition stopped. Wait for sending dtmf tones.");
         }
 
-        public async Task StartSendingDtmfToneAsync(CallMedia callMedia)
+        private async Task StartSendingDtmfToneAsync(CallMedia callMedia)
         {
             List<DtmfTone> tones = new List<DtmfTone>
         {
