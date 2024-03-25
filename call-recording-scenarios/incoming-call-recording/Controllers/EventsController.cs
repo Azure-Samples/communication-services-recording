@@ -183,7 +183,7 @@ namespace incoming_call_recording.Controllers
                                     // Take action for Recognition through DTMF
                                     var context = recognizeCompletedEvent.OperationContext;
                                     logger.LogInformation($"Current context-->{context}");
-                                    await answerCallResult.CallConnection.RemoveParticipantAsync(callee);
+                                    await answerCallResult.CallConnection.RemoveParticipantAsync(CommunicationIdentifier.FromRawId(callerId));
                                    
                                     break;
                                 case SpeechResult speechResult:
@@ -277,12 +277,12 @@ namespace incoming_call_recording.Controllers
                                 logger.LogInformation($"Total participants in call: {participantCount}");
                                 logger.LogInformation($"Participants: {JsonSerializer.Serialize(participantList)}");
 
-                                var muteResponse = await answerCallResult.CallConnection.MuteParticipantAsync(callee);
+                                var muteResponse = await answerCallResult.CallConnection.MuteParticipantAsync(CommunicationIdentifier.FromRawId(callerId));
 
                                 if (muteResponse.GetRawResponse().Status == 200)
                                 {
                                     logger.LogInformation("Participant is muted. Waiting for confirmation...");
-                                    var participant = await answerCallResult.CallConnection.GetParticipantAsync(callee);
+                                    var participant = await answerCallResult.CallConnection.GetParticipantAsync(CommunicationIdentifier.FromRawId(callerId));
                                     logger.LogInformation($"Is participant muted: {participant.Value.IsMuted}");
                                     logger.LogInformation("Mute participant test completed.");
                                 }
