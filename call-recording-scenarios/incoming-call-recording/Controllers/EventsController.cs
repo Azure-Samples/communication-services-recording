@@ -22,6 +22,7 @@ namespace incoming_call_recording.Controllers
         private bool isByos;
         private bool isTeamsComplianceUser;
         private bool isRejectCall;
+        private bool isCancelAddParticipant;
         private readonly string bringYourOwnStorageUrl;
         private readonly string teamsComplianceUserId;
         private readonly string acsPhonenumber;
@@ -43,6 +44,7 @@ namespace incoming_call_recording.Controllers
             this.isByos = configuration.GetValue<bool>("IsByos");
             this.isTeamsComplianceUser = configuration.GetValue<bool>("IsTeamsComplianceUser");
             this.isRejectCall = configuration.GetValue<bool>("IsRejectCall");
+            this.isCancelAddParticipant = configuration.GetValue<bool>("IsCancelAddParticipant");
             this.bringYourOwnStorageUrl = configuration.GetValue<string>("BringYourOwnStorageUrl");
             this.teamsComplianceUserId = configuration.GetValue<string>("TeamsComplianceUserId");
             this.acsPhonenumber = configuration.GetValue<string>("AcsPhonenumber");
@@ -151,6 +153,18 @@ namespace incoming_call_recording.Controllers
 
                             var addParticipantResult = await answerCallResult.CallConnection.AddParticipantAsync(addParticipantOptions);
                             logger.LogInformation($"Adding Participant to the call: {addParticipantResult.Value?.InvitationId}");
+
+                            // cancel the request with optional parameters
+                            if (isCancelAddParticipant)
+                            {
+                                var cancelAddParticipantOperationOptions = new CancelAddParticipantOperationOptions(addParticipantResult.Value.InvitationId)
+                                {
+                                    OperationContext = "operationContext",
+                                    OperationCallbackUri = new Uri(hostUrl)
+                                };
+                                await answerCallResult.CallConnection.CancelAddParticipantOperationAsync(cancelAddParticipantOperationOptions);
+                                logger.LogInformation($"Cancel Adding Participant to the call");
+                            }
 
                         }
 
