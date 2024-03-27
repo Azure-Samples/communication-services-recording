@@ -150,20 +150,7 @@ namespace incoming_call_recording.Controllers
                         var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
                         //Use EventProcessor to process CallConnected event
                         var answer_result = await answerCallResult.WaitForEventProcessorAsync();
-                        if (this.isCallTransfer)
-                        {
-                            var transferOption = new TransferToParticipantOptions(target);
-                            transferOption.Transferee = caller;
-
-                            transferOption.OperationContext = "transferCallContext";
-
-                            // Sending event to a non-default endpoint.
-                            transferOption.OperationCallbackUri = new Uri(hostUrl);
-
-                            TransferCallToParticipantResult result = await answerCallResult.CallConnection.TransferCallToParticipantAsync(transferOption);
-                            logger.LogInformation($"Call Transfered successfully");
-
-                        }
+                        
                         if (answer_result.IsSuccess)
                         {
                             logger.LogInformation($"Call connected event received for connection id: {answer_result.SuccessResult.CallConnectionId}");
@@ -178,37 +165,54 @@ namespace incoming_call_recording.Controllers
                                 //ExternalStorage = this.isByos && !string.IsNullOrEmpty(this.bringYourOwnStorageUrl) ? new BlobStorage(new Uri(this.bringYourOwnStorageUrl)) : null
                             };
                             //logger.LogInformation($"Pause On Start-->: {recordingOptions.PauseOnStart}");
-                            var recordingTask = this.callAutomationClient.GetCallRecording().StartAsync(recordingOptions);
-                            await Task.WhenAll(playTask, recordingTask);
-                            recordingId = recordingTask.Result.Value.RecordingId;
-                            logger.LogInformation($"Call recording id--> {recordingId}");
-
-                            PhoneNumberIdentifier target2 = new PhoneNumberIdentifier(targetPhonenumber);
-                            CallInvite callInvite2 = new CallInvite(target2, caller);
-
-                            var addParticipantOptions = new AddParticipantOptions(callInvite)
+                           
+                            if (this.isCallTransfer)
                             {
-                                OperationContext = "addPstnUserContext",
-                                InvitationTimeoutInSeconds = 10
-                            };
-                            
+                                var transferOption = new TransferToParticipantOptions(target);
+                                transferOption.Transferee = caller;
 
-                            var addParticipantResult = await answerCallResult.CallConnection.AddParticipantAsync(addParticipantOptions);
-                            logger.LogInformation($"Adding Participant to the call: {addParticipantResult.Value?.InvitationId}");
+                                transferOption.OperationContext = "transferCallContext";
 
-                            // cancel the request with optional parameters
-                            if (isCancelAddParticipant)
-                            {
-                                var cancelAddParticipantOperationOptions = new CancelAddParticipantOperationOptions(addParticipantResult.Value.InvitationId)
-                                {
-                                    OperationContext = "operationContext",
-                                    OperationCallbackUri = new Uri(hostUrl)
-                                };
-                                await answerCallResult.CallConnection.CancelAddParticipantOperationAsync(cancelAddParticipantOperationOptions);
-                                logger.LogInformation($"Cancel Adding Participant to the call");
+                                // Sending event to a non-default endpoint.
+                                transferOption.OperationCallbackUri = new Uri(hostUrl);
 
+                                TransferCallToParticipantResult result = await answerCallResult.CallConnection.TransferCallToParticipantAsync(transferOption);
+                                logger.LogInformation($"Call Transfered successfully");
+                                return Ok();
                             }
+                            else
+                            {
+                                var recordingTask = this.callAutomationClient.GetCallRecording().StartAsync(recordingOptions);
+                                await Task.WhenAll(playTask, recordingTask);
+                                recordingId = recordingTask.Result.Value.RecordingId;
+                                logger.LogInformation($"Call recording id--> {recordingId}");
+                                await Task.Delay(5000);
 
+                                PhoneNumberIdentifier target2 = new PhoneNumberIdentifier(targetPhonenumber);
+                                CallInvite callInvite2 = new CallInvite(target2, caller);
+
+                                var addParticipantOptions = new AddParticipantOptions(callInvite)
+                                {
+                                    OperationContext = "addPstnUserContext",
+                                    InvitationTimeoutInSeconds = 10
+                                };
+                                var addParticipantResult = await answerCallResult.CallConnection.AddParticipantAsync(addParticipantOptions);
+                                logger.LogInformation($"Adding Participant to the call: {addParticipantResult.Value?.InvitationId}");
+
+                                // cancel the request with optional parameters
+                                if (isCancelAddParticipant)
+                                {
+                                    var cancelAddParticipantOperationOptions = new CancelAddParticipantOperationOptions(addParticipantResult.Value.InvitationId)
+                                    {
+                                        OperationContext = "operationContext",
+                                        OperationCallbackUri = new Uri(hostUrl)
+                                    };
+                                    await answerCallResult.CallConnection.CancelAddParticipantOperationAsync(cancelAddParticipantOperationOptions);
+                                    logger.LogInformation($"Cancel Adding Participant to the call");
+
+                                }
+                            }
+                           
                         }
 
                         this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<RecognizeCompleted>(answerCallResult.CallConnection.CallConnectionId, async (recognizeCompletedEvent) =>
