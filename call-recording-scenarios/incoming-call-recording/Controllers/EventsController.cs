@@ -25,6 +25,7 @@ namespace incoming_call_recording.Controllers
         private bool isCallTransfer;
         private bool isCancelAddParticipant;
         private bool isRedirectCall;
+        private bool isAudioFile;
         private readonly string bringYourOwnStorageUrl;
         private readonly string teamsComplianceUserId;
         private readonly string acsPhonenumber1;
@@ -50,6 +51,7 @@ namespace incoming_call_recording.Controllers
             this.isRejectCall = configuration.GetValue<bool>("IsRejectCall");
             this.isRedirectCall = configuration.GetValue<bool>("IsRedirectCall");
             this.isCallTransfer = configuration.GetValue<bool>("IsCallTransfer");
+            this.isAudioFile = configuration.GetValue<bool>("IsAudioFile");
             this.bringYourOwnStorageUrl = configuration.GetValue<string>("BringYourOwnStorageUrl");
             this.teamsComplianceUserId = configuration.GetValue<string>("TeamsComplianceUserId");
             this.acsPhonenumber1 = configuration.GetValue<string>("AcsPhonenumber1");
@@ -78,7 +80,7 @@ namespace incoming_call_recording.Controllers
 
         [HttpPost]
         [Route("createPSTNCall")]
-        public async Task<IActionResult> createPSTNCall()
+        public async Task<IActionResult> CreatePSTNCall()
         {
 
             var callbackUri = new Uri(this.hostUrl);
@@ -88,6 +90,23 @@ namespace incoming_call_recording.Controllers
 
             var createCallOptions = new CreateCallOptions(callInvite, callbackUri);
             await this.callAutomationClient.CreateCallAsync(createCallOptions);
+            return Ok();
+        }
+
+        [HttpPost]
+        [Route("createGroupCall")]
+        public async Task<IActionResult> CreateGroupCall(string targetId)
+        {
+
+            var callbackUri = new Uri(this.hostUrl);
+            var pstnEndpoint = new PhoneNumberIdentifier(acsPhonenumber1);
+            var voipEndpoint = new CommunicationUserIdentifier(targetId);
+            var groupCallOptions = new CreateGroupCallOptions(new List<CommunicationIdentifier> { pstnEndpoint, voipEndpoint }, callbackUri)
+            {
+                SourceCallerIdNumber = new PhoneNumberIdentifier(acsPhonenumber2), // This is the Azure Communication Services provisioned phone number for the caller
+            };
+            CreateCallResult response = await callAutomationClient.CreateGroupCallAsync(groupCallOptions);
+            logger.LogInformation($"Group call is created  : {JsonSerializer.Serialize(response)}");
             return Ok();
         }
 
@@ -150,12 +169,12 @@ namespace incoming_call_recording.Controllers
                         var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
                         //Use EventProcessor to process CallConnected event
                         var answer_result = await answerCallResult.WaitForEventProcessorAsync();
-                        
+
                         if (answer_result.IsSuccess)
                         {
                             logger.LogInformation($"Call connected event received for connection id: {answer_result.SuccessResult.CallConnectionId}");
 
-                            var playTask = HandlePlayAsync(callConnectionMedia, handlePrompt, "handlePromptContext");
+                            var playTask = HandlePlayAsync(callConnectionMedia, handlePrompt, "handlePromptContext", false);
                             StartRecordingOptions recordingOptions = new StartRecordingOptions(new ServerCallLocator(answer_result.SuccessResult.ServerCallId))
                             {
                                 RecordingContent = RecordingContent.Audio,
@@ -165,7 +184,8 @@ namespace incoming_call_recording.Controllers
                                 //ExternalStorage = this.isByos && !string.IsNullOrEmpty(this.bringYourOwnStorageUrl) ? new BlobStorage(new Uri(this.bringYourOwnStorageUrl)) : null
                             };
                             //logger.LogInformation($"Pause On Start-->: {recordingOptions.PauseOnStart}");
-                           
+
+                            //Tranfer Call
                             if (this.isCallTransfer)
                             {
                                 var transferOption = new TransferToParticipantOptions(target);
@@ -211,8 +231,9 @@ namespace incoming_call_recording.Controllers
                                     logger.LogInformation($"Cancel Adding Participant to the call");
 
                                 }
+
                             }
-                           
+
                         }
 
                         this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<RecognizeCompleted>(answerCallResult.CallConnection.CallConnectionId, async (recognizeCompletedEvent) =>
@@ -261,7 +282,8 @@ namespace incoming_call_recording.Controllers
                         this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<RecognizeFailed>(answerCallResult.CallConnection.CallConnectionId, async (recognizeFailedEvent) =>
                         {
                             logger.LogInformation("Received RecognizeCompleted event");
-
+                            await callConnectionMedia.CancelAllMediaOperationsAsync();
+                            logger.LogInformation("Cancel Media completed event");
                         });
                         this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
                         {
@@ -329,6 +351,10 @@ namespace incoming_call_recording.Controllers
                             {
                                 logger.LogInformation("PSTN user added.");
 
+                                //Get the call state
+                                var callState = await answerCallResult.CallConnection.GetCallConnectionPropertiesAsync();
+                                logger.LogInformation($"Call Connection State in call: {callState.Value.CallConnectionState}");
+
                                 var response = await answerCallResult.CallConnection.GetParticipantsAsync();
                                 var participantCount = response.Value.Count;
                                 var participantList = response.Value;
@@ -347,7 +373,12 @@ namespace incoming_call_recording.Controllers
 
                                 await HandleRecognizeAsync(callConnectionMedia, callerId, pstnUserPrompt, false);
                             }
-
+                            //Play audio from audio file
+                            if (isAudioFile)
+                            {
+                                var playAudio = HandlePlayAsync(callConnectionMedia, handlePrompt, "playAudioFromAudioFileContext", true);
+                                logger.LogInformation($"Play audio form file completed: {playAudio}");
+                            }
                             if (eventData.OperationContext == "addTeamsComplianceUserContext")
                             {
                                 logger.LogInformation("Microsoft teams user added.");
@@ -365,7 +396,7 @@ namespace incoming_call_recording.Controllers
                         {
                             logger.LogInformation($"RemoveParticipantSucceeded event received for connection id: {eventData.CallConnectionId}");
                             logger.LogInformation("Received RemoveParticipantSucceeded event");
-                            await HandlePlayAsync(callConnectionMedia, removeParticipantSucceededPrompt, "removeParticipantSucceededPromptContext");
+                            await HandlePlayAsync(callConnectionMedia, removeParticipantSucceededPrompt, "removeParticipantSucceededPromptContext", false);
                             // await HandlePlayLoopAsync(callConnectionMedia, removeParticipantSucceededPrompt, "removeParticipantSucceededPromptContext");
                             //await callConnectionMedia.CancelAllMediaOperationsAsync();
                         });
@@ -593,16 +624,24 @@ namespace incoming_call_recording.Controllers
             var recognize_result = await callConnectionMedia.StartRecognizingAsync(recognizeOptions);
         }
 
-        private async Task HandlePlayAsync(CallMedia callConnectionMedia, string textToPlay, string context)
+        private async Task HandlePlayAsync(CallMedia callConnectionMedia, string textToPlay, string context, bool isPlayAudioFile)
         {
             // Play message
-            var playSource = new TextSource(textToPlay)
+            if (isPlayAudioFile)
             {
-                VoiceName = "en-US-NancyNeural"
-            };
+                var playSource = new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav"));
+                await callConnectionMedia.PlayToAllAsync(playSource);
+            }
+            else
+            {
+                var playSource = new TextSource(textToPlay)
+                {
+                    VoiceName = "en-US-NancyNeural"
+                };
 
-            var playOptions = new PlayToAllOptions(playSource) { OperationContext = context };
-            await callConnectionMedia.PlayToAllAsync(playOptions);
+                var playOptions = new PlayToAllOptions(playSource) { OperationContext = context };
+                await callConnectionMedia.PlayToAllAsync(playOptions);
+            }
         }
         private async Task HandlePlayLoopAsync(CallMedia callConnectionMedia, string textToPlay, string context)
         {
