@@ -30,7 +30,7 @@ namespace incoming_call_recording.Controllers
             //Get ACS Connection String from appsettings.json
             this.hostUrl = configuration.GetValue<string>("BaseUrl");
             this.cognitiveServiceEndpoint = configuration.GetValue<string>("CognitiveServiceEndpoint");
-            this.transportUrl = configuration.GetValue<string>("CognitiveServiceEndpoint");
+            this.transportUrl = configuration.GetValue<string>("TransportUrl");
             ArgumentException.ThrowIfNullOrEmpty(this.hostUrl);
             //Call Automation Client
             this.callAutomationClient = callAutomationClient;
