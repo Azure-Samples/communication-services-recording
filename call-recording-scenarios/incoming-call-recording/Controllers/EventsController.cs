@@ -26,6 +26,8 @@ namespace incoming_call_recording.Controllers
         private bool isCancelAddParticipant;
         private bool isRedirectCall;
         private bool isAudioFile;
+        private bool isAudioFileToTargetParticipant;
+        private bool isAudioLoop;
         private readonly string bringYourOwnStorageUrl;
         private readonly string teamsComplianceUserId;
         private readonly string acsPhonenumber1;
@@ -52,6 +54,8 @@ namespace incoming_call_recording.Controllers
             this.isRedirectCall = configuration.GetValue<bool>("IsRedirectCall");
             this.isCallTransfer = configuration.GetValue<bool>("IsCallTransfer");
             this.isAudioFile = configuration.GetValue<bool>("IsAudioFile");
+            this.isAudioLoop = configuration.GetValue<bool>("IsAudioLoop");
+            this.isAudioFileToTargetParticipant = configuration.GetValue<bool>("IsAudioFileToTargetParticipant");
             this.bringYourOwnStorageUrl = configuration.GetValue<string>("BringYourOwnStorageUrl");
             this.teamsComplianceUserId = configuration.GetValue<string>("TeamsComplianceUserId");
             this.acsPhonenumber1 = configuration.GetValue<string>("AcsPhonenumber1");
@@ -62,6 +66,7 @@ namespace incoming_call_recording.Controllers
         string pstnUserPrompt = "Hello this is contoso recognition test please confirm or cancel to proceed further.";
         string dtmfPrompt = "Thank you for the update. Please type  one two three four on your keypad to close call.";
         string removeParticipantSucceededPrompt = "RemoveParticipantSucceeded!";
+        string recognizeFailedPromt = "Recognization failed!";
         string confirmLabel = "Confirm";
         string cancelLabel = "Cancel";
         CommunicationUserIdentifier callee;
@@ -146,6 +151,7 @@ namespace incoming_call_recording.Controllers
                         var redirectUser = new CallInvite(target, caller);
                         var result = await callAutomationClient.RedirectCallAsync(incomingCallContext, redirectUser);
                         logger.LogInformation("Redirect a call to another user");
+                        return Ok(result);
                     }
 
                     if (this.isRejectCall)
@@ -180,10 +186,10 @@ namespace incoming_call_recording.Controllers
                                 RecordingContent = RecordingContent.Audio,
                                 RecordingChannel = RecordingChannel.Unmixed,
                                 RecordingFormat = RecordingFormat.Wav,
-                                //PauseOnStart = this.isPauseOnStart,
-                                //ExternalStorage = this.isByos && !string.IsNullOrEmpty(this.bringYourOwnStorageUrl) ? new BlobStorage(new Uri(this.bringYourOwnStorageUrl)) : null
+                                PauseOnStart = this.isPauseOnStart,
+                                ExternalStorage = this.isByos && !string.IsNullOrEmpty(this.bringYourOwnStorageUrl) ? new BlobStorage(new Uri(this.bringYourOwnStorageUrl)) : null
                             };
-                            //logger.LogInformation($"Pause On Start-->: {recordingOptions.PauseOnStart}");
+                            logger.LogInformation($"Pause On Start-->: {recordingOptions.PauseOnStart}");
 
                             //Tranfer Call
                             if (this.isCallTransfer)
@@ -228,7 +234,6 @@ namespace incoming_call_recording.Controllers
                                         OperationCallbackUri = new Uri(hostUrl)
                                     };
                                     await answerCallResult.CallConnection.CancelAddParticipantOperationAsync(cancelAddParticipantOperationOptions);
-                                    logger.LogInformation($"Cancel Adding Participant to the call");
 
                                 }
 
@@ -282,8 +287,31 @@ namespace incoming_call_recording.Controllers
                         this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<RecognizeFailed>(answerCallResult.CallConnection.CallConnectionId, async (recognizeFailedEvent) =>
                         {
                             logger.LogInformation("Received RecognizeCompleted event");
-                            await callConnectionMedia.CancelAllMediaOperationsAsync();
-                            logger.LogInformation("Cancel Media completed event");
+                            if (isAudioFileToTargetParticipant)
+                            {
+                                var playSource = new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav"));
+                                var playTo = new List<CommunicationIdentifier> { target };
+                                await callConnectionMedia.PlayAsync(playSource, playTo);
+                                logger.LogInformation(" Play Audio to target participants completed event");
+
+                                if (isAudioLoop)
+                                {
+                                    var playOptions = new PlayOptions(playSource, playTo) { OperationContext = "AudioLoopToTargetParticipantContext", Loop = true };
+                                    await callConnectionMedia.PlayAsync(playOptions);
+                                    logger.LogInformation(" Play audio loop to target participants completed event");
+
+                                }
+                            }
+                            else
+                            {
+                                //Play audio loop
+                                await HandlePlayLoopAsync(callConnectionMedia, recognizeFailedPromt, "recognizeFailedPromtContext");
+
+                                //Cancel media operations
+                                await callConnectionMedia.CancelAllMediaOperationsAsync();
+                                logger.LogInformation("Cancel Media completed event");
+                            }
+                            
                         });
                         this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
                         {
@@ -392,15 +420,6 @@ namespace incoming_call_recording.Controllers
                             logger.LogInformation($"Message: {eventData.ResultInformation?.Message.ToString()}");
                         });
 
-                        this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<RemoveParticipantSucceeded>(answerCallResult.CallConnection.CallConnectionId, async (eventData) =>
-                        {
-                            logger.LogInformation($"RemoveParticipantSucceeded event received for connection id: {eventData.CallConnectionId}");
-                            logger.LogInformation("Received RemoveParticipantSucceeded event");
-                            await HandlePlayAsync(callConnectionMedia, removeParticipantSucceededPrompt, "removeParticipantSucceededPromptContext", false);
-                            // await HandlePlayLoopAsync(callConnectionMedia, removeParticipantSucceededPrompt, "removeParticipantSucceededPromptContext");
-                            //await callConnectionMedia.CancelAllMediaOperationsAsync();
-                        });
-
                         this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<CallTransferAccepted>(answerCallResult.CallConnection.CallConnectionId, async (eventData) =>
                         {
                             logger.LogInformation($"CallTransferAccepted event received for connection id: {eventData.CallConnectionId}");
@@ -461,13 +480,22 @@ namespace incoming_call_recording.Controllers
                                 logger.LogInformation("Received RecordingStateChanged event");
                             });
 
-                        //this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<TeamsComplianceRecordingStateChanged>(
-                        //    answerCallResult.CallConnection.CallConnectionId,
-                        //    async (eventData) =>
-                        //    {
-                        //        logger.LogInformation("Received TeamsComplianceRecordingStateChanged event");
-                        //        logger.LogInformation($"CorrelationId:->{eventData.CorrelationId}");
-                        //    });
+                        this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<TeamsComplianceRecordingStateChanged>(
+                            answerCallResult.CallConnection.CallConnectionId,
+                            async (eventData) =>
+                            {
+                                logger.LogInformation("Received TeamsComplianceRecordingStateChanged event");
+                                logger.LogInformation($"CorrelationId:->{eventData.CorrelationId}");
+                            });
+
+                        this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<RemoveParticipantSucceeded>(answerCallResult.CallConnection.CallConnectionId, async (eventData) =>
+                        {
+                            logger.LogInformation($"RemoveParticipantSucceeded event received for connection id: {eventData.CallConnectionId}");
+                            logger.LogInformation("Received RemoveParticipantSucceeded event");
+                            await HandlePlayAsync(callConnectionMedia, removeParticipantSucceededPrompt, "removeParticipantSucceededPromptContext", false);
+                            //await HandlePlayLoopAsync(callConnectionMedia, removeParticipantSucceededPrompt, "removeParticipantSucceededPromptContext");
+                            //await callConnectionMedia.CancelAllMediaOperationsAsync();
+                        });
 
                         this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<RemoveParticipantFailed>(answerCallResult.CallConnection.CallConnectionId, async (eventData) =>
                         {
@@ -475,6 +503,16 @@ namespace incoming_call_recording.Controllers
                             logger.LogInformation("Received RemoveParticipantFailed event");
                         });
 
+                        this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<CancelAddParticipantSucceeded>(answerCallResult.CallConnection.CallConnectionId, async (eventData) =>
+                        {
+                            logger.LogInformation($"CancelAddParticipantSucceeded event received for connection id: {eventData.CallConnectionId}");
+                            logger.LogInformation("Received CancelAddParticipantSucceeded event");
+                        });
+                        this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<CancelAddParticipantFailed>(answerCallResult.CallConnection.CallConnectionId, async (eventData) =>
+                        {
+                            logger.LogInformation($"CancelAddParticipantFailed event received for connection id: {eventData.CallConnectionId}");
+                            logger.LogInformation("Received CancelAddParticipantFailed event");
+                        });
 
                         this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<CallDisconnected>(answerCallResult.CallConnection.CallConnectionId, async (callDisconnectedEvent) =>
                         {
@@ -544,7 +582,7 @@ namespace incoming_call_recording.Controllers
             var result = await this.callAutomationClient.GetCallRecording().GetStateAsync(recordingId);
             string state = result.Value.RecordingState.ToString();
             logger.LogInformation($"Recording Status:->  {state}");
-            //logger.LogInformation($"Recording Type:-> { result.Value.RecordingType.ToString()}");
+            logger.LogInformation($"Recording Type:-> {result.Value.RecordingType.ToString()}");
             return state;
         }
 
@@ -638,7 +676,6 @@ namespace incoming_call_recording.Controllers
                 {
                     VoiceName = "en-US-NancyNeural"
                 };
-
                 var playOptions = new PlayToAllOptions(playSource) { OperationContext = context };
                 await callConnectionMedia.PlayToAllAsync(playOptions);
             }
