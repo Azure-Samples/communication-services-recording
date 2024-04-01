@@ -99,13 +99,11 @@ namespace incoming_call_recording.Controllers
                         logger.LogInformation($"Starting ACS Recording");
 
                         var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
-                        Stopwatch stopwatch = Stopwatch.StartNew();
-                        var playTask = HandleVoiceMessageNoteAsync(callConnectionMedia, answer_result.SuccessResult.CallConnectionId, false);
-                        var recordingTask = this.callAutomationClient.GetCallRecording().StartAsync(recordingOptions);
-                        await Task.WhenAll(playTask, recordingTask);
-                        acsRecordingId = recordingTask.Result.Value.RecordingId;
+                        await HandleVoiceMessageNoteAsync(callConnectionMedia, answer_result.SuccessResult.CallConnectionId, false);
+                        var recordingResult = await this.callAutomationClient.GetCallRecording().StartAsync(recordingOptions);
+
+                        acsRecordingId = recordingResult.Value.RecordingId;
                         logger.LogInformation($"Call recording id: {acsRecordingId}");
-                        acsRecordingId = recordingTask.Result.Value.RecordingId;
                     }
                     this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
                     {
@@ -159,7 +157,6 @@ namespace incoming_call_recording.Controllers
             eventProcessor.ProcessEvents(cloudEvents);
             return Ok();
         }
-
         private async Task HandleVoiceMessageNoteAsync(CallMedia callConnectionMedia, string callerId, bool isAudioFile = false)
         {
             try
