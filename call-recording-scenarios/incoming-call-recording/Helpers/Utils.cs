@@ -44,9 +44,9 @@ namespace incoming_call_recording.Helpers
                                     {
                                         // byte[] byteArray = jsonData?.audioData?.data;
                                         byte[] bytes = System.Convert.FromBase64String(jsonData?.audioData?.data);
-                                        // string fileName = @"C:\Users\v-vdharmaraj\OneDrive - Microsoft\Desktop\recording_test\test_media_stream.pcm";
                                         // File.WriteAllBytes(fileName, bytes);
-                                        string fileName = string.Format("..//{0}.wav", jsonData?.audioData?.participantRawID).Replace(":", "");
+                                        // string fileName = string.Format("..//{0}.wav", jsonData?.audioData?.participantRawID).Replace(":", "");
+                                        string fileName = string.Format("..//{0}.pcm", jsonData?.audioData?.participantRawID).Replace(":", "");
                                         FileStream audioDataFileStream;
 
                                         if (audioDataFiles.ContainsKey(fileName))
