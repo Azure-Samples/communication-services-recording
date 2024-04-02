@@ -5,8 +5,8 @@ Receives the incoming call event, and answer the incoming call, starts the recor
 ## Features
 
 This project framework provides the following features:
-
-* It accepts the incoming call to the ACS User identity.
+* It starts the websocket
+* It accepts the incoming call with media streams enabled
 * It plays text to the user.
 * It records the user message.
 * It downloads the recording file to your project location.
@@ -44,15 +44,39 @@ Open the appsettings.json file to configure the following settings:
     
     - `AcsConnectionString`: Azure Communication Service resource's connection string.
     - `CognitiveServiceEndpoint`: The Cognitive Services endpoint
-    - `BaseUrl`:  your dev tunnel endpoint
+    - `BaseUrl`:  your ngrok url wwhere it points to 8080 port
+	- `TranscportUrl`:  your ngrok url wwhere it points to 5001 port
+
+### Setup and host ngrok
+
+You can run multiple tunnels on ngrok by changing ngrok.yml file as follows:
+
+1. Open the ngrok.yml file from a powershell using the command ngrok config edit
+2. Update the ngrok.yml file as follows:
+    authtoken: xxxxxxxxxxxxxxxxxxxxxxxxxx
+    version: "2"
+    region: us
+    tunnels:
+    first:
+        addr: 8080
+        proto: http 
+        host_header: localhost:8080
+    second:
+        proto: http
+        addr: 5001
+        host_header: localhost:5001
+NOTE: Make sure the "addr:" field has only the port number, not the localhost url.
+3. Start all ngrok tunnels configured using the following command on a powershell - ngrok start --all
+4. Once you have setup the websocket server, note down the the ngrok url on your server's port as the websocket url in this application for incoming call scenario. Just replace the https:// with wss:// and update in the appsettings.json file.
 
 ## Running the application
 
 Best way to test this application, by calling to communication identifier [you can refer this web ui to make call to communication identitifer or acs phone number](https://github.com/Azure-Samples/communication-services-web-calling-tutorial/blob/main/README.md)
 
-1. Azure DevTunnel: Ensure your AzureDevTunnel URI is active and points to the correct port of your localhost application
-2. Run `dotnet run` to build and run the incoming-call-recording tool
-3. Register an EventGrid Webhook for the IncomingCall Event that points to your DevTunnel URI. Instructions [here](https://learn.microsoft.com/en-us/azure/communication-services/concepts/call-automation/incoming-call-notification).
+1. Provide the ngrok url for port 8080 in the BaseUrl
+2. Provide the ngrok url for port 5001 in the TransportUrl
+3. Run `dotnet run` to build and run the incoming-call-recording tool
+4. Register an EventGrid Webhook for the IncomingCall Event that points to your ngrok url for port 8080. Instructions [here](https://learn.microsoft.com/en-us/azure/communication-services/concepts/call-automation/incoming-call-notification).
    
    - **Step 1** -> Go to your communication service resource in the Azure portal
    - **Step 2** -> Left corner you might see the events and click event subsription on the right

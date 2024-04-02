@@ -4,7 +4,10 @@ using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
 using Microsoft.AspNetCore.Mvc;
+using System.Diagnostics;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace incoming_call_recording.Controllers
 {
@@ -17,8 +20,9 @@ namespace incoming_call_recording.Controllers
         private readonly CallAutomationClient callAutomationClient;
         private string hostUrl = "";
         private string cognitiveServiceEndpoint = "";
-        private static string recordingId = "";
-        // private static string targetId = "8:acs:19ae37ff-1a44-4e19-aade-198eedddbdf2_0000001b-e3e8-dec7-0d8b-084822007f54";
+        private string transportUrl = "";
+        private static string acsRecordingId = "";
+
         public EventsController(ILogger<EventsController> logger
             , IConfiguration configuration,
             CallAutomationClient callAutomationClient)
@@ -26,24 +30,12 @@ namespace incoming_call_recording.Controllers
             //Get ACS Connection String from appsettings.json
             this.hostUrl = configuration.GetValue<string>("BaseUrl");
             this.cognitiveServiceEndpoint = configuration.GetValue<string>("CognitiveServiceEndpoint");
+            this.transportUrl = configuration.GetValue<string>("TransportUrl");
             ArgumentException.ThrowIfNullOrEmpty(this.hostUrl);
             //Call Automation Client
             this.callAutomationClient = callAutomationClient;
             this.logger = logger;
             this.configuration = configuration;
-        }
-
-        [HttpPost]
-        [Route("createCall")]
-        public async Task<IActionResult> CreateCall(string targetId)
-        {
-
-            var callbackUri = new Uri(this.hostUrl + $"api/callbacks?callerId={targetId}");
-            var target = new CommunicationUserIdentifier(targetId);
-            var callInvite = new CallInvite(target);
-            var createCallOptions = new CreateCallOptions(callInvite, callbackUri);
-            await this.callAutomationClient.CreateCallAsync(createCallOptions);
-            return Ok();
         }
 
         /* Route for Azure Communication Service eventgrid webhooks*/
@@ -73,9 +65,19 @@ namespace incoming_call_recording.Controllers
                     var callerId = incomingCallEventData?.FromCommunicationIdentifier?.RawId;
                     var incomingCallContext = incomingCallEventData?.IncomingCallContext;
                     var callbackUri = new Uri(hostUrl + $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
+                    var mediaStreamingOptions = new MediaStreamingOptions(
+                        new Uri(this.transportUrl),
+                          MediaStreamingTransport.Websocket,
+                          MediaStreamingContent.Audio,
+                          MediaStreamingAudioChannel.Mixed
+                          );
                     var options = new AnswerCallOptions(incomingCallContext, callbackUri)
                     {
-                        CognitiveServicesEndpoint = new Uri(this.cognitiveServiceEndpoint)
+                        MediaStreamingOptions = mediaStreamingOptions,
+                        CallIntelligenceOptions = new CallIntelligenceOptions()
+                        {
+                            CognitiveServicesEndpoint = new Uri(this.cognitiveServiceEndpoint)
+                        }
                     };
 
                     AnswerCallResult answerCallResult = await this.callAutomationClient.AnswerCallAsync(options);
@@ -85,28 +87,32 @@ namespace incoming_call_recording.Controllers
                     var answer_result = await answerCallResult.WaitForEventProcessorAsync();
                     if (answer_result.IsSuccess)
                     {
-                        logger.LogInformation($"Call connected event received for connection id: {answer_result.SuccessResult.CallConnectionId}");
-                        var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
-                        var playTask = HandleVoiceMessageNoteAsync(callConnectionMedia, answer_result.SuccessResult.CallConnectionId);
+                        logger.LogInformation($"Call connected event received for correlation id: {answer_result.SuccessResult.CorrelationId}");
                         StartRecordingOptions recordingOptions = new StartRecordingOptions(new ServerCallLocator(answer_result.SuccessResult.ServerCallId))
                         {
                             RecordingContent = RecordingContent.Audio,
                             RecordingChannel = RecordingChannel.Unmixed,
-                            RecordingFormat = RecordingFormat.Wav
+                            RecordingFormat = RecordingFormat.Wav,
+                            RecordingStateCallbackUri = callbackUri
                         };
-                        var recordingTask = this.callAutomationClient.GetCallRecording().StartAsync(recordingOptions);
-                        await Task.WhenAll(playTask, recordingTask);
-                        recordingId = recordingTask.Result.Value.RecordingId;
-                        logger.LogInformation($"Call recording id: {recordingId}");
+
+                        logger.LogInformation($"Starting ACS Recording");
+
+                        var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
+                        await HandleVoiceMessageNoteAsync(callConnectionMedia, answer_result.SuccessResult.CallConnectionId, false);
+                        var recordingResult = await this.callAutomationClient.GetCallRecording().StartAsync(recordingOptions);
+
+                        acsRecordingId = recordingResult.Value.RecordingId;
+                        logger.LogInformation($"Call recording id: {acsRecordingId}");
                     }
                     this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
                     {
-                        logger.LogInformation($"Play completed event received for connection id: {playCompletedEvent.CallConnectionId}");
+                        logger.LogInformation($"Play completed event received for CorrelationId id: {playCompletedEvent.CorrelationId}  time : {DateTime.Now}");
                         Console.Beep();
                     });
                     this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayFailed>(answerCallResult.CallConnection.CallConnectionId, async (playFailedEvent) =>
                     {
-                        logger.LogInformation($"Play failed event received for connection id: {playFailedEvent.CallConnectionId}");
+                        logger.LogInformation($"Play failed event received for CorrelationId id: {playFailedEvent.CorrelationId} time : {DateTime.Now}");
                         var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
                         var resultInformation = playFailedEvent.ResultInformation;
                         logger.LogError("Encountered error during play, message={msg}, code={code}, subCode={subCode}", resultInformation?.Message, resultInformation?.Code, resultInformation?.SubCode);
@@ -132,24 +138,40 @@ namespace incoming_call_recording.Controllers
             {
                 CallAutomationEventBase parsedEvent = CallAutomationEventParser.Parse(cloudEvent);
                 logger.LogInformation(
-                    "Received call event: {type}, callConnectionID: {connId}, serverCallId: {serverId}, chatThreadId: {chatThreadId}",
+                    "Received call event: {type}, callConnectionID: {connId}, serverCallId: {serverId}, time: {datetime}",
                     parsedEvent.GetType(),
                     parsedEvent.CallConnectionId,
                     parsedEvent.ServerCallId,
-                    parsedEvent.OperationContext);
+                    DateTime.Now);
+
+
+                if (parsedEvent is RecordingStateChanged recordingStateChanged)
+                {
+                    if (recordingStateChanged.State == RecordingState.Active)
+                    {
+                        logger.LogInformation($"Received recording state event time: {recordingStateChanged.State.ToString()}");
+                    }
+                }
             }
 
             eventProcessor.ProcessEvents(cloudEvents);
             return Ok();
         }
-
-        private async Task HandleVoiceMessageNoteAsync(CallMedia callConnectionMedia, string callerId)
+        private async Task HandleVoiceMessageNoteAsync(CallMedia callConnectionMedia, string callerId, bool isAudioFile = false)
         {
             try
             {
-                string textToPlay = "Sorry, all of our agents are busy on a call. Please leave your phone number and your message after the beep sound.";
-                var voiceMessageNote = new TextSource(textToPlay, "en-US-NancyNeural");
-                await callConnectionMedia.PlayToAllAsync(voiceMessageNote);
+                if (isAudioFile)
+                {
+                    var prompt = new FileSource(new Uri(hostUrl + "/audio/MainMenu.wav"));
+                    await callConnectionMedia.PlayToAllAsync(prompt);
+                }
+                else
+                {
+                    string textToPlay = "Sorry, all of our agents are busy on a call. Please leave your phone number and your message after the beep sound.";
+                    var voiceMessageNote = new TextSource(textToPlay, "en-US-NancyNeural");
+                    await callConnectionMedia.PlayToAllAsync(voiceMessageNote);
+                }
             }
             catch (Exception ex)
             {
