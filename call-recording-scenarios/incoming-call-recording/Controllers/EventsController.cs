@@ -237,6 +237,7 @@ namespace incoming_call_recording.Controllers
 
                                 }
 
+
                             }
 
                         }
@@ -685,7 +686,7 @@ namespace incoming_call_recording.Controllers
             // Play message
             var playSource = new TextSource(textToPlay)
             {
-                VoiceName = "en-US-NancyNeural"
+                VoiceName = "en-US-NancyNeural",
             };
 
             var playOptions = new PlayToAllOptions(playSource) { OperationContext = context, Loop = true };
@@ -693,13 +694,13 @@ namespace incoming_call_recording.Controllers
         }
         private async Task StartContinuousDtmfAsync(CallMedia callMedia)
         {
-            await callMedia.StartContinuousDtmfRecognitionAsync(CommunicationIdentifier.FromRawId(targetPhonenumber));
+            await callMedia.StartContinuousDtmfRecognitionAsync(new PhoneNumberIdentifier(targetPhonenumber));
             Console.WriteLine("Continuous Dtmf recognition started. Press one on dialpad.");
         }
 
         private async Task StopContinuousDtmfAsync(CallMedia callMedia)
         {
-            await callMedia.StopContinuousDtmfRecognitionAsync(CommunicationIdentifier.FromRawId(targetPhonenumber));
+            await callMedia.StopContinuousDtmfRecognitionAsync(new PhoneNumberIdentifier(targetPhonenumber));
             Console.WriteLine("Continuous Dtmf recognition stopped. Wait for sending dtmf tones.");
         }
 
@@ -711,7 +712,7 @@ namespace incoming_call_recording.Controllers
             DtmfTone.One
         };
 
-            await callMedia.SendDtmfTonesAsync(tones, CommunicationIdentifier.FromRawId(targetPhonenumber));
+            await callMedia.SendDtmfTonesAsync(tones, new PhoneNumberIdentifier(targetPhonenumber));
             Console.WriteLine("Send dtmf tones started. Respond over phone.");
         }
 
