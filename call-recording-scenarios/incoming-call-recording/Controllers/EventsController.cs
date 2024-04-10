@@ -33,6 +33,7 @@ namespace incoming_call_recording.Controllers
         private readonly string acsPhonenumber1;
         private readonly string acsPhonenumber2;
         private readonly string targetPhonenumber;
+        private readonly string targetPhonenumber2;
         // private static string targetId = "8:acs:19ae37ff-1a44-4e19-aade-198eedddbdf2_0000001b-e3e8-dec7-0d8b-084822007f54";
         public EventsController(ILogger<EventsController> logger
             , IConfiguration configuration,
@@ -61,6 +62,7 @@ namespace incoming_call_recording.Controllers
             this.acsPhonenumber1 = configuration.GetValue<string>("AcsPhonenumber1");
             this.acsPhonenumber2 = configuration.GetValue<string>("AcsPhonenumber2");
             this.targetPhonenumber = configuration.GetValue<string>("TargetPhonenumber");
+            this.targetPhonenumber2 = configuration.GetValue<string>("TargetPhonenumber2");
         }
         string handlePrompt = "Welcome to the Contoso Utilities. Thank you!";
         string pstnUserPrompt = "Hello this is contoso recognition test please confirm or cancel to proceed further.";
@@ -74,7 +76,6 @@ namespace incoming_call_recording.Controllers
         [Route("createCall")]
         public async Task<IActionResult> CreateCall(string targetId)
         {
-
             var callbackUri = new Uri(this.hostUrl + $"api/callbacks?callerId={targetId}");
             callee = new CommunicationUserIdentifier(targetId);
             var callInvite = new CallInvite(callee);
@@ -87,13 +88,15 @@ namespace incoming_call_recording.Controllers
         [Route("createPSTNCall")]
         public async Task<IActionResult> CreatePSTNCall()
         {
-
-            var callbackUri = new Uri(this.hostUrl);
             PhoneNumberIdentifier target = new PhoneNumberIdentifier(acsPhonenumber1);
             PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhonenumber2);
+            var callbackUri = new Uri(new Uri(hostUrl), $"/api/callbacks/{caller.RawId}");
             CallInvite callInvite = new CallInvite(target, caller);
+            var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
+            {
+                CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint) }
+            };
 
-            var createCallOptions = new CreateCallOptions(callInvite, callbackUri);
             await this.callAutomationClient.CreateCallAsync(createCallOptions);
             return Ok();
         }
@@ -102,10 +105,10 @@ namespace incoming_call_recording.Controllers
         [Route("createGroupCall")]
         public async Task<IActionResult> CreateGroupCall(string targetId)
         {
-
-            var callbackUri = new Uri(this.hostUrl);
+            var callbackUri = new Uri(this.hostUrl + $"api/callbacks?callerId={targetId}");
             var pstnEndpoint = new PhoneNumberIdentifier(acsPhonenumber1);
             var voipEndpoint = new CommunicationUserIdentifier(targetId);
+
             var groupCallOptions = new CreateGroupCallOptions(new List<CommunicationIdentifier> { pstnEndpoint, voipEndpoint }, callbackUri)
             {
                 SourceCallerIdNumber = new PhoneNumberIdentifier(acsPhonenumber2), // This is the Azure Communication Services provisioned phone number for the caller
@@ -186,22 +189,20 @@ namespace incoming_call_recording.Controllers
                                 RecordingContent = RecordingContent.Audio,
                                 RecordingChannel = RecordingChannel.Unmixed,
                                 RecordingFormat = RecordingFormat.Wav,
-                                //PauseOnStart = this.isPauseOnStart,
-                                //ExternalStorage = this.isByos && !string.IsNullOrEmpty(this.bringYourOwnStorageUrl) ? new BlobStorage(new Uri(this.bringYourOwnStorageUrl)) : null
+                                PauseOnStart = this.isPauseOnStart,
+                                ExternalStorage = this.isByos && !string.IsNullOrEmpty(this.bringYourOwnStorageUrl) ? new BlobStorage(new Uri(this.bringYourOwnStorageUrl)) : null
                             };
-                            //logger.LogInformation($"Pause On Start-->: {recordingOptions.PauseOnStart}");
+                            logger.LogInformation($"Pause On Start-->: {recordingOptions.PauseOnStart}");
 
                             //Tranfer Call
                             if (this.isCallTransfer)
                             {
                                 var transferOption = new TransferToParticipantOptions(target);
                                 transferOption.Transferee = caller;
-
                                 transferOption.OperationContext = "transferCallContext";
 
                                 // Sending event to a non-default endpoint.
                                 transferOption.OperationCallbackUri = new Uri(hostUrl);
-
                                 TransferCallToParticipantResult result = await answerCallResult.CallConnection.TransferCallToParticipantAsync(transferOption);
                                 logger.LogInformation($"Call Transfered successfully");
                                 return Ok();
@@ -213,9 +214,6 @@ namespace incoming_call_recording.Controllers
                                 recordingId = recordingTask.Result.Value.RecordingId;
                                 logger.LogInformation($"Call recording id--> {recordingId}");
                                 await Task.Delay(5000);
-
-                                PhoneNumberIdentifier target2 = new PhoneNumberIdentifier(targetPhonenumber);
-                                CallInvite callInvite2 = new CallInvite(target2, caller);
 
                                 var addParticipantOptions = new AddParticipantOptions(callInvite)
                                 {
@@ -233,13 +231,10 @@ namespace incoming_call_recording.Controllers
                                         OperationContext = "operationContext",
                                         OperationCallbackUri = new Uri(hostUrl)
                                     };
+
                                     await answerCallResult.CallConnection.CancelAddParticipantOperationAsync(cancelAddParticipantOperationOptions);
-
                                 }
-
-
                             }
-
                         }
 
                         this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<RecognizeCompleted>(answerCallResult.CallConnection.CallConnectionId, async (recognizeCompletedEvent) =>
@@ -300,7 +295,6 @@ namespace incoming_call_recording.Controllers
                                     var playOptions = new PlayOptions(playSource, playTo) { OperationContext = "AudioLoopToTargetParticipantContext", Loop = true };
                                     await callConnectionMedia.PlayAsync(playOptions);
                                     logger.LogInformation(" Play audio loop to target participants completed event");
-
                                 }
                             }
                             else
@@ -332,11 +326,9 @@ namespace incoming_call_recording.Controllers
 
                                 await answerCallResult.CallConnection.AddParticipantAsync(addTeamsComplianceUserOptions);
                             }
-
                             await Task.Delay(5000);
 
                             var state = await this.GetRecordingState(recordingId);
-
                             if (state == "active")
                             {
                                 await this.callAutomationClient.GetCallRecording().PauseAsync(recordingId);
@@ -359,7 +351,6 @@ namespace incoming_call_recording.Controllers
                             logger.LogInformation($"Recording is Stopped.");
 
                             var callConnection = this.callAutomationClient.GetCallConnection(playCompletedEvent.CallConnectionId);
-
                             await callConnection.HangUpAsync(false);
 
                         });
@@ -414,7 +405,6 @@ namespace incoming_call_recording.Controllers
                             }
                         });
 
-
                         this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<AddParticipantFailed>(answerCallResult.CallConnection.CallConnectionId, async (eventData) =>
                         {
                             logger.LogInformation($"AddParticipantFailed event received for connection id: {eventData.CallConnectionId}");
@@ -426,6 +416,7 @@ namespace incoming_call_recording.Controllers
                             logger.LogInformation($"CallTransferAccepted event received for connection id: {eventData.CallConnectionId}");
 
                         });
+
                         this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<CallTransferFailed>(answerCallResult.CallConnection.CallConnectionId, async (eventData) =>
                         {
                             logger.LogInformation("Received CallTransferFailed event");
@@ -481,13 +472,13 @@ namespace incoming_call_recording.Controllers
                                 logger.LogInformation("Received RecordingStateChanged event");
                             });
 
-                        //this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<TeamsComplianceRecordingStateChanged>(
-                        //    answerCallResult.CallConnection.CallConnectionId,
-                        //    async (eventData) =>
-                        //    {
-                        //        logger.LogInformation("Received TeamsComplianceRecordingStateChanged event");
-                        //        logger.LogInformation($"CorrelationId:->{eventData.CorrelationId}");
-                        //    });
+                        this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<TeamsComplianceRecordingStateChanged>(
+                            answerCallResult.CallConnection.CallConnectionId,
+                            async (eventData) =>
+                            {
+                                logger.LogInformation("Received TeamsComplianceRecordingStateChanged event");
+                                logger.LogInformation($"CorrelationId:->{eventData.CorrelationId}");
+                            });
 
                         this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<RemoveParticipantSucceeded>(answerCallResult.CallConnection.CallConnectionId, async (eventData) =>
                         {
@@ -509,10 +500,23 @@ namespace incoming_call_recording.Controllers
                             logger.LogInformation($"CancelAddParticipantSucceeded event received for connection id: {eventData.CallConnectionId}");
                             logger.LogInformation("Received CancelAddParticipantSucceeded event");
                         });
+
                         this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<CancelAddParticipantFailed>(answerCallResult.CallConnection.CallConnectionId, async (eventData) =>
                         {
                             logger.LogInformation($"CancelAddParticipantFailed event received for connection id: {eventData.CallConnectionId}");
                             logger.LogInformation("Received CancelAddParticipantFailed event");
+                        });
+
+                        this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<CallTransferAccepted>(answerCallResult.CallConnection.CallConnectionId, async (eventData) =>
+                        {
+                            logger.LogInformation($"CallTransferAccepted event received for connection id: {eventData.CallConnectionId}");
+                            logger.LogInformation("Received CallTransferAccepted event");
+                        });
+
+                        this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<CallTransferFailed>(answerCallResult.CallConnection.CallConnectionId, async (eventData) =>
+                        {
+                            logger.LogInformation($"CallTransferFailed event received for connection id: {eventData.CallConnectionId}");
+                            logger.LogInformation("Received CallTransferFailed event");
                         });
 
                         this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<CallDisconnected>(answerCallResult.CallConnection.CallConnectionId, async (callDisconnectedEvent) =>
@@ -583,7 +587,7 @@ namespace incoming_call_recording.Controllers
             var result = await this.callAutomationClient.GetCallRecording().GetStateAsync(recordingId);
             string state = result.Value.RecordingState.ToString();
             logger.LogInformation($"Recording Status:->  {state}");
-            //logger.LogInformation($"Recording Type:-> {result.Value.RecordingType.ToString()}");
+            logger.LogInformation($"Recording Type:-> {result.Value.RecordingType.ToString()}");
             return state;
         }
 
@@ -622,7 +626,6 @@ namespace incoming_call_recording.Controllers
                     OperationContext = "recognizeContext"
                 };
 
-
             var recognizeDtmfOptions =
                new CallMediaRecognizeDtmfOptions(
                    targetParticipant: CommunicationIdentifier.FromRawId(target.RawId), 4)
@@ -634,12 +637,9 @@ namespace incoming_call_recording.Controllers
                    InterToneTimeout = TimeSpan.FromSeconds(5)
                };
 
-
             CallMediaRecognizeOptions recognizeOptions = dtmf ? recognizeDtmfOptions : recognizeChoiceOptions;
-
             var recognize_result = await callConnectionMedia.StartRecognizingAsync(recognizeOptions);
         }
-
 
         private async Task HandleDtmfRecognizeAsync(CallMedia callConnectionMedia, string callerId, string message, string context)
         {
