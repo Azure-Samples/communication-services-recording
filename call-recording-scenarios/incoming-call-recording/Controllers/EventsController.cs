@@ -282,25 +282,28 @@ namespace incoming_call_recording.Controllers
 
                         this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<RecognizeFailed>(answerCallResult.CallConnection.CallConnectionId, async (recognizeFailedEvent) =>
                         {
-                            logger.LogInformation("Received RecognizeCompleted event");
+                            logger.LogInformation("Received RecognizeFailed event");
                             if (isAudioFileToTargetParticipant)
                             {
                                 var playSource = new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav"));
                                 var playTo = new List<CommunicationIdentifier> { target };
-                                await callConnectionMedia.PlayAsync(playSource, playTo);
-                                logger.LogInformation(" Play Audio to target participants completed event");
-
                                 if (isAudioLoop)
                                 {
                                     var playOptions = new PlayOptions(playSource, playTo) { OperationContext = "AudioLoopToTargetParticipantContext", Loop = true };
                                     await callConnectionMedia.PlayAsync(playOptions);
                                     logger.LogInformation(" Play audio loop to target participants completed event");
                                 }
+                                else
+                                {
+                                    await callConnectionMedia.PlayAsync(playSource, playTo);
+                                    logger.LogInformation(" Play Audio to target participants completed event");
+                                }
                             }
                             else
                             {
                                 //Play audio loop
                                 await HandlePlayLoopAsync(callConnectionMedia, recognizeFailedPromt, "recognizeFailedPromtContext");
+                                await Task.Delay(10000);
 
                                 //Cancel media operations
                                 await callConnectionMedia.CancelAllMediaOperationsAsync();
@@ -669,7 +672,16 @@ namespace incoming_call_recording.Controllers
             if (isPlayAudioFile)
             {
                 var playSource = new FileSource(new Uri("https://www2.cs.uic.edu/~i101/SoundFiles/StarWars3.wav"));
-                await callConnectionMedia.PlayToAllAsync(playSource);
+                if (isAudioLoop)
+                {
+                    var playOptions = new PlayToAllOptions(playSource) { OperationContext = "AudioLoopToTargetParticipantContext", Loop = true };
+                    await callConnectionMedia.PlayToAllAsync(playOptions);
+                    logger.LogInformation(" Play audio loop to target participants completed event");
+                }
+                else
+                {
+                    await callConnectionMedia.PlayToAllAsync(playSource);
+                }
             }
             else
             {
