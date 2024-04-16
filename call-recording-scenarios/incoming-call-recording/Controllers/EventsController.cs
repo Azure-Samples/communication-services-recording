@@ -24,6 +24,8 @@ namespace incoming_call_recording.Controllers
         private bool isRejectCall;
         private bool isCallTransfer;
         private bool isCancelAddParticipant;
+        private bool isCancelAddParticipantFailed;
+        private bool isCancelAddPartWithoutOption;
         private bool isRedirectCall;
         private bool isAudioFile;
         private bool isAudioFileToTargetParticipant;
@@ -49,6 +51,8 @@ namespace incoming_call_recording.Controllers
             this.configuration = configuration;
             this.isPauseOnStart = configuration.GetValue<bool>("IsPauseOnStart");
             this.isCancelAddParticipant = configuration.GetValue<bool>("IsCancelAddParticipant");
+            this.isCancelAddParticipantFailed = configuration.GetValue<bool>("IsCancelAddParticipantFailed");
+            this.isCancelAddPartWithoutOption = configuration.GetValue<bool>("IsCancelAddPartWithoutOption");
             this.isByos = configuration.GetValue<bool>("IsByos");
             this.isTeamsComplianceUser = configuration.GetValue<bool>("IsTeamsComplianceUser");
             this.isRejectCall = configuration.GetValue<bool>("IsRejectCall");
@@ -231,8 +235,14 @@ namespace incoming_call_recording.Controllers
                                         OperationContext = "operationContext",
                                         OperationCallbackUri = new Uri(hostUrl)
                                     };
-
-                                    await answerCallResult.CallConnection.CancelAddParticipantOperationAsync(cancelAddParticipantOperationOptions);
+                                    if (isCancelAddPartWithoutOption)
+                                    {
+                                        await answerCallResult.CallConnection.CancelAddParticipantOperationAsync(addParticipantResult.Value.InvitationId);
+                                    }
+                                    else
+                                    {
+                                        await answerCallResult.CallConnection.CancelAddParticipantOperationAsync(cancelAddParticipantOperationOptions);
+                                    }
                                 }
                             }
                         }
@@ -626,7 +636,7 @@ namespace incoming_call_recording.Controllers
                     InterruptPrompt = false,
                     InitialSilenceTimeout = TimeSpan.FromSeconds(10),
                     Prompt = greetingPlaySource,
-                    OperationContext = "recognizeContext"
+                    OperationContext = "recognizeContext",
                 };
 
             var recognizeDtmfOptions =
@@ -637,7 +647,7 @@ namespace incoming_call_recording.Controllers
                    InitialSilenceTimeout = TimeSpan.FromSeconds(15),
                    Prompt = greetingPlaySource,
                    OperationContext = "dtmfContext",
-                   InterToneTimeout = TimeSpan.FromSeconds(5)
+                   InterToneTimeout = TimeSpan.FromSeconds(5),
                };
 
             CallMediaRecognizeOptions recognizeOptions = dtmf ? recognizeDtmfOptions : recognizeChoiceOptions;
