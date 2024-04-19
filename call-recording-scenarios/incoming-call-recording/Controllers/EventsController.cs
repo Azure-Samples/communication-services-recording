@@ -184,6 +184,7 @@ namespace incoming_call_recording.Controllers
                         if (answer_result.IsSuccess)
                         {
                             logger.LogInformation($"Call connected event received for connection id: {answer_result.SuccessResult.CallConnectionId}");
+                            logger.LogInformation($"CORRELATION ID: {answer_result.SuccessResult.CorrelationId}");
 
                             var playTask = HandlePlayAsync(callConnectionMedia, handlePrompt, "handlePromptContext", false);
                             StartRecordingOptions recordingOptions = new StartRecordingOptions(new ServerCallLocator(answer_result.SuccessResult.ServerCallId))
@@ -192,7 +193,7 @@ namespace incoming_call_recording.Controllers
                                 RecordingChannel = RecordingChannel.Unmixed,
                                 RecordingFormat = RecordingFormat.Wav,
                                 PauseOnStart = this.isPauseOnStart,
-                                ExternalStorage = this.isByos && !string.IsNullOrEmpty(this.bringYourOwnStorageUrl) ? new BlobStorage(new Uri(this.bringYourOwnStorageUrl)) : null
+                                RecordingStorage = this.isByos && !string.IsNullOrEmpty(this.bringYourOwnStorageUrl) ? RecordingStorage.CreateAzureBlobContainerRecordingStorage(new Uri(this.bringYourOwnStorageUrl)) : null
                             };
                             logger.LogInformation($"Pause On Start-->: {recordingOptions.PauseOnStart}");
 
@@ -483,13 +484,13 @@ namespace incoming_call_recording.Controllers
                                 logger.LogInformation("Received RecordingStateChanged event");
                             });
 
-                        this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<TeamsComplianceRecordingStateChanged>(
-                            answerCallResult.CallConnection.CallConnectionId,
-                            async (eventData) =>
-                            {
-                                logger.LogInformation("Received TeamsComplianceRecordingStateChanged event");
-                                logger.LogInformation($"CorrelationId:->{eventData.CorrelationId}");
-                            });
+                        //this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<TeamsComplianceRecordingStateChanged>(
+                        //    answerCallResult.CallConnection.CallConnectionId,
+                        //    async (eventData) =>
+                        //    {
+                        //        logger.LogInformation("Received TeamsComplianceRecordingStateChanged event");
+                        //        logger.LogInformation($"CorrelationId:->{eventData.CorrelationId}");
+                        //    });
 
                         this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<RemoveParticipantSucceeded>(answerCallResult.CallConnection.CallConnectionId, async (eventData) =>
                         {
@@ -598,7 +599,7 @@ namespace incoming_call_recording.Controllers
             var result = await this.callAutomationClient.GetCallRecording().GetStateAsync(recordingId);
             string state = result.Value.RecordingState.ToString();
             logger.LogInformation($"Recording Status:->  {state}");
-            logger.LogInformation($"Recording Type:-> {result.Value.RecordingType.ToString()}");
+            logger.LogInformation($"Recording Type:-> {result.Value.RecordingKind.ToString()}");
             return state;
         }
 
