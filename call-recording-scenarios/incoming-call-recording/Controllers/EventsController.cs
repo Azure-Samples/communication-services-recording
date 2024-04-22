@@ -29,6 +29,10 @@ namespace incoming_call_recording.Controllers
         private bool isAudioFile;
         private bool isAudioFileToTargetParticipant;
         private bool isAudioLoop;
+        private bool isHangUp;
+        private bool isPauseHangUp;
+        private bool isAddParticipantOnPause;
+        private bool isRemovePartiBeforeResume;
         private readonly string bringYourOwnStorageUrl;
         private readonly string teamsComplianceUserId;
         private readonly string acsPhonenumber1;
@@ -58,6 +62,10 @@ namespace incoming_call_recording.Controllers
             this.isCallTransfer = configuration.GetValue<bool>("IsCallTransfer");
             this.isAudioFile = configuration.GetValue<bool>("IsAudioFile");
             this.isAudioLoop = configuration.GetValue<bool>("IsAudioLoop");
+            this.isHangUp = configuration.GetValue<bool>("IsHangUp");
+            this.isPauseHangUp = configuration.GetValue<bool>("IsPauseHangUp");
+            this.isAddParticipantOnPause = configuration.GetValue<bool>("IsAddParticipantOnPause");
+            this.isRemovePartiBeforeResume = configuration.GetValue<bool>("IsRemovePartiBeforeResume");
             this.isAudioFileToTargetParticipant = configuration.GetValue<bool>("IsAudioFileToTargetParticipant");
             this.bringYourOwnStorageUrl = configuration.GetValue<string>("BringYourOwnStorageUrl");
             this.teamsComplianceUserId = configuration.GetValue<string>("TeamsComplianceUserId");
@@ -221,26 +229,45 @@ namespace incoming_call_recording.Controllers
                                 var addParticipantOptions = new AddParticipantOptions(callInvite)
                                 {
                                     OperationContext = "addPstnUserContext",
-                                    InvitationTimeoutInSeconds = 10
+                                    InvitationTimeoutInSeconds = 10,
                                 };
-                                var addParticipantResult = await answerCallResult.CallConnection.AddParticipantAsync(addParticipantOptions);
-                                logger.LogInformation($"Adding Participant to the call: {addParticipantResult.Value?.InvitationId}");
 
-                                // cancel the request with optional parameters
-                                if (isCancelAddParticipant)
+                                if (isAddParticipantOnPause)
                                 {
-                                    var cancelAddParticipantOperationOptions = new CancelAddParticipantOperationOptions(addParticipantResult.Value.InvitationId)
+                                    await this.callAutomationClient.GetCallRecording().PauseAsync(recordingId);
+                                    logger.LogInformation($"Recording is Paused.");
+
+                                    var addParticipantResult = await answerCallResult.CallConnection.AddParticipantAsync(addParticipantOptions);
+                                    logger.LogInformation($"Adding Participant to the call when recording is Pause: {addParticipantResult.Value?.InvitationId}");
+
+                                    if (isRemovePartiBeforeResume)
                                     {
-                                        OperationContext = "operationContext",
-                                        OperationCallbackUri = new Uri(hostUrl)
-                                    };
-                                    if (isCancelAddPartWithoutOption)
-                                    {
-                                        await answerCallResult.CallConnection.CancelAddParticipantOperationAsync(addParticipantResult.Value.InvitationId);
+                                        await Task.Delay(15000);
+                                        var removeParticipantResult = await answerCallResult.CallConnection.RemoveParticipantAsync(target);
+                                        logger.LogInformation("Removed Participant from the call when recording is Pause");
                                     }
-                                    else
+                                }
+                                else
+                                {
+                                    var addParticipantResult = await answerCallResult.CallConnection.AddParticipantAsync(addParticipantOptions);
+                                    logger.LogInformation($"Adding Participant to the call: {addParticipantResult.Value?.InvitationId}");
+
+                                    // cancel the request with optional parameters
+                                    if (isCancelAddParticipant)
                                     {
-                                        await answerCallResult.CallConnection.CancelAddParticipantOperationAsync(cancelAddParticipantOperationOptions);
+                                        var cancelAddParticipantOperationOptions = new CancelAddParticipantOperationOptions(addParticipantResult.Value.InvitationId)
+                                        {
+                                            OperationContext = "operationContext",
+                                            OperationCallbackUri = new Uri(hostUrl)
+                                        };
+                                        if (isCancelAddPartWithoutOption)
+                                        {
+                                            await answerCallResult.CallConnection.CancelAddParticipantOperationAsync(addParticipantResult.Value.InvitationId);
+                                        }
+                                        else
+                                        {
+                                            await answerCallResult.CallConnection.CancelAddParticipantOperationAsync(cancelAddParticipantOperationOptions);
+                                        }
                                     }
                                 }
                             }
@@ -341,14 +368,33 @@ namespace incoming_call_recording.Controllers
                             await Task.Delay(5000);
 
                             var state = await this.GetRecordingState(recordingId);
+                            var callConnection = this.callAutomationClient.GetCallConnection(playCompletedEvent.CallConnectionId);
+
                             if (state == "active")
                             {
-                                await this.callAutomationClient.GetCallRecording().PauseAsync(recordingId);
-                                logger.LogInformation($"Recording is Paused.");
-                                await this.GetRecordingState(recordingId);
-                                await Task.Delay(5000);
-                                await this.callAutomationClient.GetCallRecording().ResumeAsync(recordingId);
-                                logger.LogInformation($"Recording is resumed.");
+                                if (isHangUp)
+                                {
+                                    await callConnection.HangUpAsync(true);
+                                    logger.LogInformation($"Call Disconnected When Recording Started.");
+                                }
+                                else
+                                {
+                                    await this.callAutomationClient.GetCallRecording().PauseAsync(recordingId);
+                                    logger.LogInformation($"Recording is Paused.");
+
+                                    if (isPauseHangUp)
+                                    {
+                                        await callConnection.HangUpAsync(true);
+                                        logger.LogInformation($"Call Disconnected When Recording is Paused.");
+                                    }
+                                    else
+                                    {
+                                        await this.GetRecordingState(recordingId);
+                                        await Task.Delay(5000);
+                                        await this.callAutomationClient.GetCallRecording().ResumeAsync(recordingId);
+                                        logger.LogInformation($"Recording is resumed.");
+                                    }
+                                }
                             }
                             else
                             {
@@ -357,14 +403,14 @@ namespace incoming_call_recording.Controllers
                                 logger.LogInformation($"Recording is Resumed.");
                                 await this.GetRecordingState(recordingId);
                             }
+                            if (!isHangUp && !isPauseHangUp)
+                            {
+                                await Task.Delay(5000);
+                                await this.callAutomationClient.GetCallRecording().StopAsync(recordingId);
+                                logger.LogInformation($"Recording is Stopped.");
 
-                            await Task.Delay(5000);
-                            await this.callAutomationClient.GetCallRecording().StopAsync(recordingId);
-                            logger.LogInformation($"Recording is Stopped.");
-
-                            var callConnection = this.callAutomationClient.GetCallConnection(playCompletedEvent.CallConnectionId);
-                            await callConnection.HangUpAsync(false);
-
+                                await callConnection.HangUpAsync(false);
+                            }
                         });
                         this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayFailed>(answerCallResult.CallConnection.CallConnectionId, async (playFailedEvent) =>
                         {
@@ -542,6 +588,11 @@ namespace incoming_call_recording.Controllers
                 {
                     var metadataLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].MetadataLocation;
                     var contentLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].ContentLocation;
+                    var deletecLocation = statusUpdated.RecordingStorageInfo.RecordingChunks[0].DeleteLocation;
+                    logger.LogInformation($"Metadata Location:--> {metadataLocation}");
+                    logger.LogInformation($"Content Location:--> {contentLocation}");
+                    logger.LogInformation($"Delete Location:--> {deletecLocation}");
+
                     if (!this.isByos)
                     {
                         await this.downloadRecording(contentLocation);
