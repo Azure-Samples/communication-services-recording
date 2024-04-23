@@ -4,6 +4,7 @@ using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 using System.Text.Json;
 
 namespace incoming_call_recording.Controllers
@@ -290,6 +291,7 @@ namespace incoming_call_recording.Controllers
                                         logger.LogInformation("Moving towards dtmf test.");
                                         logger.LogInformation("Recognize completed succesfully, labelDetected={labelDetected}, phraseDetected={phraseDetected}", labelDetected, phraseDetected);
                                         await HandleRecognizeAsync(callConnectionMedia, callerId, dtmfPrompt, true);
+                                        //await StopContinuousDtmfAsync(callConnectionMedia);
                                         break;
                                     }
                                     else
@@ -595,7 +597,7 @@ namespace incoming_call_recording.Controllers
 
                     if (!this.isByos)
                     {
-                        await this.downloadRecording(contentLocation);
+                        await this.downloadRecording(contentLocation, metadataLocation);
                         await this.DownloadRecordingMetadata(metadataLocation);
                     }
                 }
@@ -638,11 +640,31 @@ namespace incoming_call_recording.Controllers
             }
         }
 
-        private async Task downloadRecording(string contentLocation)
+        private async Task downloadRecording(string contentLocation, string metadataLocation)
         {
             string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
             var recordingDownloadUri = new Uri(contentLocation);
-            var response = await this.callAutomationClient.GetCallRecording().DownloadToAsync(recordingDownloadUri, $"{downloadsPath}\\test.wav");
+            string format = await GetFormat(metadataLocation);
+            var response = await this.callAutomationClient.GetCallRecording().DownloadToAsync(recordingDownloadUri, $"{downloadsPath}\\test.{format}");
+        }
+
+        private async Task<string> GetFormat(string metadataLocation)
+        {
+            string format = string.Empty;
+            var metaDataDownloadUri = new Uri(metadataLocation);
+            var metaDataResponse = await callAutomationClient.GetCallRecording().DownloadStreamingAsync(metaDataDownloadUri);
+            using (StreamReader streamReader = new StreamReader(metaDataResponse))
+            {
+                // Read the JSON content from the stream and parse it into an object
+                string jsonContent = await streamReader.ReadToEndAsync();
+
+                // Parse the JSON string
+                JObject jsonObject = JObject.Parse(jsonContent);
+
+                // Access the "format" value from the "recordingInfo" object
+                format = (string)jsonObject["recordingInfo"]["format"];
+            }
+            return format;
         }
 
         private async Task<string> GetRecordingState(string recordingId)
