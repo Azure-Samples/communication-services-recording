@@ -15,6 +15,10 @@ Call recording scenarios tool help to debug/demonstrate how to use the call reco
    * [Run application locally](https://github.com/Azure-Samples/communication-services-recording/blob/main/call-recording-scenarios/web-call-recording/README.md#setup-instructions)
    * [Demo Screen Shots](https://github.com/Azure-Samples/communication-services-recording/blob/main/README.md)
 
+## ❤️ Feedback
+
+We appreciate your feedback and energy helping us improve our services. [If you've tried the service, please give us feedback through this survey](https://microsoft.qualtrics.com/jfe/form/SV_9WTOR2ItSo0oFee). 
+
 ## Resources
 
 * Used webcalling sample as base for the UI https://github.com/Azure-Samples/communication-services-web-calling-tutorial/blob/main/README.md
