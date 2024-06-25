@@ -1,7 +1,8 @@
-﻿using System.Net.WebSockets;
-using System.Net;
+﻿using incoming_call_recording.Services;
+using System.Net.WebSockets;
 using System.Text;
-using Newtonsoft.Json;
+using System.Text.Json;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace incoming_call_recording.Helpers
 {
@@ -14,7 +15,11 @@ namespace incoming_call_recording.Helpers
         public static async Task ProcessRequest(WebSocket webSocket)
         {
             Dictionary<string, FileStream> audioDataFiles = new Dictionary<string, FileStream>();
-
+            WebSocketReceiveResult? receiveResult = null;
+            var activeCall = new ActiveCall
+            {
+                Stream = new MemoryStream()
+            };
             try
             {
                 string partialData = "";
@@ -23,7 +28,7 @@ namespace incoming_call_recording.Helpers
                 {
                     byte[] receiveBuffer = new byte[2048];
                     var cancellationToken = new CancellationTokenSource(TimeSpan.FromSeconds(60)).Token;
-                    WebSocketReceiveResult receiveResult = await webSocket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), cancellationToken);
+                    receiveResult = await webSocket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), cancellationToken);
 
                     if (receiveResult.MessageType != WebSocketMessageType.Close)
                     {
@@ -38,7 +43,28 @@ namespace incoming_call_recording.Helpers
 
                                 if (data != null)
                                 {
-                                    AudioDataPackets jsonData = JsonConvert.DeserializeObject<AudioDataPackets>(data);
+                                    //AudioDataPackets jsonData = JsonConvert.DeserializeObject<AudioDataPackets>(data);
+
+                                    var jsonData = JsonSerializer.Deserialize<AudioDataPackets>(data,
+                                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                                    if (jsonData != null && jsonData.kind == "AudioMetadata")
+                                    {
+                                        Console.WriteLine($"Audio Metadata: {JsonSerializer.Serialize(jsonData.AudioMetadata)}");
+                                        if (CallContextService.MediaSubscriptionIdsToServerCallId.TryGetValue(jsonData.AudioMetadata?.SubscriptionId, out var serverCallId))
+                                        {
+                                            if (CallContextService.GetActiveCall(serverCallId)?.Stream != null)
+                                            {
+                                                Console.WriteLine($"This stream is already being processed.  Ending this websocket connection.");
+                                                return;
+                                            }
+                                            else
+                                            {
+                                                activeCall.SubscriptionId = jsonData.AudioMetadata?.SubscriptionId;
+                                                activeCall = CallContextService.SetActiveCall(serverCallId, activeCall);
+                                            }
+                                        }
+                                    }
 
                                     if (jsonData != null && jsonData.kind == "AudioData")
                                     {
@@ -58,6 +84,7 @@ namespace incoming_call_recording.Helpers
                                             audioDataFileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.None);
                                             audioDataFiles.Add(fileName, audioDataFileStream);
                                         }
+                                        await activeCall.Stream.WriteAsync(bytes, 0, bytes.Length, cancellationToken);
                                         await audioDataFileStream.WriteAsync(bytes, 0, bytes.Length);
                                     }
                                     Console.WriteLine(data);
@@ -84,6 +111,17 @@ namespace incoming_call_recording.Helpers
                     file.Value.Close();
                 }
                 audioDataFiles.Clear();
+
+                if (activeCall.StopRecordingTimer?.IsRunning ?? false)
+                {
+                    // Takes 10 seconds for the Cancellation token to timeout after media stream is stopped
+                    var elapsedTime = activeCall.StopRecordingTimer.ElapsedMilliseconds - 10000;
+                    activeCall.StopRecordingTimer.Stop();
+                    Console.WriteLine($"*******RECORDING STOPPED elapsed milliseconds: {elapsedTime}  *******");
+                }
+                activeCall.Stream.Close();
+
+                await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, receiveResult.CloseStatusDescription, CancellationToken.None);
             }
         }
     }

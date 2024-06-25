@@ -21,6 +21,9 @@ namespace incoming_call_recording.Controllers
         private string hostUrl = "";
         private string cognitiveServiceEndpoint = "";
         private string transportUrl = "";
+        private string targetPhoneNumber = "";
+        private string acsPhoneNumber = "";
+        private string acsTargetUser = "";
         private static string acsRecordingId = "";
 
         public EventsController(ILogger<EventsController> logger
@@ -31,6 +34,9 @@ namespace incoming_call_recording.Controllers
             this.hostUrl = configuration.GetValue<string>("BaseUrl");
             this.cognitiveServiceEndpoint = configuration.GetValue<string>("CognitiveServiceEndpoint");
             this.transportUrl = configuration.GetValue<string>("TransportUrl");
+            this.acsPhoneNumber = configuration.GetValue<string>("AcsPhoneNumber");
+            this.targetPhoneNumber = configuration.GetValue<string>("TargetPhoneNumber");
+            this.acsTargetUser = configuration.GetValue<string>("AcsTargetUser");
             ArgumentException.ThrowIfNullOrEmpty(this.hostUrl);
             //Call Automation Client
             this.callAutomationClient = callAutomationClient;
@@ -38,6 +44,22 @@ namespace incoming_call_recording.Controllers
             this.configuration = configuration;
         }
 
+        [HttpPost]
+        [Route("createPSTNCall")]
+        public async Task<IActionResult> CreatePSTNCall()
+        {
+            PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhoneNumber);
+            PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhoneNumber);
+            var callbackUri = new Uri(hostUrl);
+            CallInvite callInvite = new CallInvite(target, caller);
+            var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
+            {
+                CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint) }
+            };
+
+            await this.callAutomationClient.CreateCallAsync(createCallOptions);
+            return Ok();
+        }
         /* Route for Azure Communication Service eventgrid webhooks*/
         [HttpPost]
         [Route("events")]
@@ -67,9 +89,9 @@ namespace incoming_call_recording.Controllers
                     var callbackUri = new Uri(hostUrl + $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
                     var mediaStreamingOptions = new MediaStreamingOptions(
                         new Uri(this.transportUrl),
-                          MediaStreamingTransport.Websocket,
                           MediaStreamingContent.Audio,
-                          MediaStreamingAudioChannel.Mixed
+                          MediaStreamingAudioChannel.Mixed,
+                          MediaStreamingTransport.Websocket
                           );
                     var options = new AnswerCallOptions(incomingCallContext, callbackUri)
                     {
@@ -104,7 +126,32 @@ namespace incoming_call_recording.Controllers
 
                         acsRecordingId = recordingResult.Value.RecordingId;
                         logger.LogInformation($"Call recording id: {acsRecordingId}");
+
+                        var acsTarget = new CommunicationUserIdentifier(acsTargetUser);
+                        CallInvite callInvite = new CallInvite(acsTarget);
+
+                        var addParticipantOptions = new AddParticipantOptions(callInvite)
+                        {
+                            OperationContext = "addAcsUserContext",
+                            InvitationTimeoutInSeconds = 10
+                        };
+                        var addParticipantResult = await answerCallResult.CallConnection.AddParticipantAsync(addParticipantOptions);
+                        logger.LogInformation($"Adding Participant to the call: {addParticipantResult.Value?.InvitationId}");
+
                     }
+
+                    this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<AddParticipantSucceeded>(answerCallResult.CallConnection.CallConnectionId, async (eventData) =>
+                    {
+                        logger.LogInformation($"AddParticipantSucceeded event received for connection id: {eventData.CallConnectionId}");
+                        logger.LogInformation($"Participant:  {JsonSerializer.Serialize(eventData.Participant)}");
+                    });
+
+                    this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<AddParticipantFailed>(answerCallResult.CallConnection.CallConnectionId, async (eventData) =>
+                    {
+                        logger.LogInformation($"AddParticipantFailed event received for connection id: {eventData.CallConnectionId}");
+                        logger.LogInformation($"Message: {eventData.ResultInformation?.Message.ToString()}");
+                    });
+
                     this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
                     {
                         logger.LogInformation($"Play completed event received for CorrelationId id: {playCompletedEvent.CorrelationId}  time : {DateTime.Now}");
