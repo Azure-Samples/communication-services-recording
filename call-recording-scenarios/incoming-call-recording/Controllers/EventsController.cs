@@ -4,10 +4,7 @@ using Azure.Messaging;
 using Azure.Messaging.EventGrid;
 using Azure.Messaging.EventGrid.SystemEvents;
 using Microsoft.AspNetCore.Mvc;
-using System.Diagnostics;
 using System.Text.Json;
-using System.Text.Json.Nodes;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace incoming_call_recording.Controllers
 {
@@ -45,21 +42,29 @@ namespace incoming_call_recording.Controllers
         }
 
         [HttpPost]
-        [Route("createPSTNCall")]
+        [Route("createOutBoundCall")]
         public async Task<IActionResult> CreatePSTNCall()
         {
             PhoneNumberIdentifier target = new PhoneNumberIdentifier(targetPhoneNumber);
             PhoneNumberIdentifier caller = new PhoneNumberIdentifier(acsPhoneNumber);
-            var callbackUri = new Uri(hostUrl);
+            var callbackUri = new Uri(this.hostUrl + $"/api/callbacks");
+            var mediaStreamingOptions = new MediaStreamingOptions(
+                        new Uri(this.transportUrl),
+                          MediaStreamingTransport.Websocket,
+                          MediaStreamingContent.Audio,
+                          MediaStreamingAudioChannel.Mixed
+                          );
             CallInvite callInvite = new CallInvite(target, caller);
             var createCallOptions = new CreateCallOptions(callInvite, callbackUri)
             {
-                CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint) }
+                CallIntelligenceOptions = new CallIntelligenceOptions() { CognitiveServicesEndpoint = new Uri(cognitiveServiceEndpoint) },
+                MediaStreamingOptions = mediaStreamingOptions
             };
 
             await this.callAutomationClient.CreateCallAsync(createCallOptions);
             return Ok();
         }
+
         /* Route for Azure Communication Service eventgrid webhooks*/
         [HttpPost]
         [Route("events")]
@@ -87,83 +92,71 @@ namespace incoming_call_recording.Controllers
                     var callerId = incomingCallEventData?.FromCommunicationIdentifier?.RawId;
                     var incomingCallContext = incomingCallEventData?.IncomingCallContext;
                     var callbackUri = new Uri(hostUrl + $"/api/callbacks/{Guid.NewGuid()}?callerId={callerId}");
-                    var mediaStreamingOptions = new MediaStreamingOptions(
-                        new Uri(this.transportUrl),
-                          MediaStreamingContent.Audio,
-                          MediaStreamingAudioChannel.Mixed,
-                          MediaStreamingTransport.Websocket
-                          );
-                    var options = new AnswerCallOptions(incomingCallContext, callbackUri)
-                    {
-                        MediaStreamingOptions = mediaStreamingOptions,
-                        CallIntelligenceOptions = new CallIntelligenceOptions()
-                        {
-                            CognitiveServicesEndpoint = new Uri(this.cognitiveServiceEndpoint)
-                        }
-                    };
+                    //var mediaStreamingOptions = new MediaStreamingOptions(
+                    //    new Uri(this.transportUrl),
+                    //      MediaStreamingContent.Audio,
+                    //      MediaStreamingAudioChannel.Mixed,
+                    //      MediaStreamingTransport.Websocket
+                    //      );
+                    //var options = new AnswerCallOptions(incomingCallContext, callbackUri)
+                    //{
+                    //    MediaStreamingOptions = mediaStreamingOptions,
+                    //    CallIntelligenceOptions = new CallIntelligenceOptions()
+                    //    {
+                    //        CognitiveServicesEndpoint = new Uri(this.cognitiveServiceEndpoint)
+                    //    }
+                    //};
 
-                    AnswerCallResult answerCallResult = await this.callAutomationClient.AnswerCallAsync(options);
-                    logger.LogInformation($"Answer call result: {answerCallResult.CallConnection.CallConnectionId}");
+                    //AnswerCallResult answerCallResult = await this.callAutomationClient.AnswerCallAsync(options);
+                    //logger.LogInformation($"Answer call result: {answerCallResult.CallConnection.CallConnectionId}");
 
-                    //Use EventProcessor to process CallConnected event
-                    var answer_result = await answerCallResult.WaitForEventProcessorAsync();
-                    if (answer_result.IsSuccess)
-                    {
-                        logger.LogInformation($"Call connected event received for correlation id: {answer_result.SuccessResult.CorrelationId}");
-                        StartRecordingOptions recordingOptions = new StartRecordingOptions(new ServerCallLocator(answer_result.SuccessResult.ServerCallId))
-                        {
-                            RecordingContent = RecordingContent.Audio,
-                            RecordingChannel = RecordingChannel.Unmixed,
-                            RecordingFormat = RecordingFormat.Wav,
-                            RecordingStateCallbackUri = callbackUri
-                        };
+                    ////Use EventProcessor to process CallConnected event
+                    //var answer_result = await answerCallResult.WaitForEventProcessorAsync();
+                    //if (answer_result.IsSuccess)
+                    //{
+                    //    logger.LogInformation($"Call connected event received for correlation id: {answer_result.SuccessResult.CorrelationId}");
+                    //    StartRecordingOptions recordingOptions = new StartRecordingOptions(new ServerCallLocator(answer_result.SuccessResult.ServerCallId))
+                    //    {
+                    //        RecordingContent = RecordingContent.Audio,
+                    //        RecordingChannel = RecordingChannel.Unmixed,
+                    //        RecordingFormat = RecordingFormat.Wav,
+                    //        RecordingStateCallbackUri = callbackUri
+                    //    };
 
-                        logger.LogInformation($"Starting ACS Recording");
+                    //    logger.LogInformation($"Starting ACS Recording");
 
-                        var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
-                        await HandleVoiceMessageNoteAsync(callConnectionMedia, answer_result.SuccessResult.CallConnectionId, false);
-                        var recordingResult = await this.callAutomationClient.GetCallRecording().StartAsync(recordingOptions);
+                    //    var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
+                    //    await HandleVoiceMessageNoteAsync(callConnectionMedia, answer_result.SuccessResult.CallConnectionId, false);
+                    //    var recordingResult = await this.callAutomationClient.GetCallRecording().StartAsync(recordingOptions);
 
-                        acsRecordingId = recordingResult.Value.RecordingId;
-                        logger.LogInformation($"Call recording id: {acsRecordingId}");
+                    //    acsRecordingId = recordingResult.Value.RecordingId;
+                    //    logger.LogInformation($"Call recording id: {acsRecordingId}");
+                    //}
 
-                        var acsTarget = new CommunicationUserIdentifier(acsTargetUser);
-                        CallInvite callInvite = new CallInvite(acsTarget);
+                    //this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<AddParticipantSucceeded>(answerCallResult.CallConnection.CallConnectionId, async (eventData) =>
+                    //{
+                    //    logger.LogInformation($"AddParticipantSucceeded event received for connection id: {eventData.CallConnectionId}");
+                    //    logger.LogInformation($"Participant:  {JsonSerializer.Serialize(eventData.Participant)}");
+                    //});
 
-                        var addParticipantOptions = new AddParticipantOptions(callInvite)
-                        {
-                            OperationContext = "addAcsUserContext",
-                            InvitationTimeoutInSeconds = 10
-                        };
-                        var addParticipantResult = await answerCallResult.CallConnection.AddParticipantAsync(addParticipantOptions);
-                        logger.LogInformation($"Adding Participant to the call: {addParticipantResult.Value?.InvitationId}");
+                    //this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<AddParticipantFailed>(answerCallResult.CallConnection.CallConnectionId, async (eventData) =>
+                    //{
+                    //    logger.LogInformation($"AddParticipantFailed event received for connection id: {eventData.CallConnectionId}");
+                    //    logger.LogInformation($"Message: {eventData.ResultInformation?.Message.ToString()}");
+                    //});
 
-                    }
-
-                    this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<AddParticipantSucceeded>(answerCallResult.CallConnection.CallConnectionId, async (eventData) =>
-                    {
-                        logger.LogInformation($"AddParticipantSucceeded event received for connection id: {eventData.CallConnectionId}");
-                        logger.LogInformation($"Participant:  {JsonSerializer.Serialize(eventData.Participant)}");
-                    });
-
-                    this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<AddParticipantFailed>(answerCallResult.CallConnection.CallConnectionId, async (eventData) =>
-                    {
-                        logger.LogInformation($"AddParticipantFailed event received for connection id: {eventData.CallConnectionId}");
-                        logger.LogInformation($"Message: {eventData.ResultInformation?.Message.ToString()}");
-                    });
-
-                    this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
-                    {
-                        logger.LogInformation($"Play completed event received for CorrelationId id: {playCompletedEvent.CorrelationId}  time : {DateTime.Now}");
-                        Console.Beep();
-                    });
-                    this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayFailed>(answerCallResult.CallConnection.CallConnectionId, async (playFailedEvent) =>
-                    {
-                        logger.LogInformation($"Play failed event received for CorrelationId id: {playFailedEvent.CorrelationId} time : {DateTime.Now}");
-                        var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
-                        var resultInformation = playFailedEvent.ResultInformation;
-                        logger.LogError("Encountered error during play, message={msg}, code={code}, subCode={subCode}", resultInformation?.Message, resultInformation?.Code, resultInformation?.SubCode);
-                    });
+                    //this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayCompleted>(answerCallResult.CallConnection.CallConnectionId, async (playCompletedEvent) =>
+                    //{
+                    //    logger.LogInformation($"Play completed event received for CorrelationId id: {playCompletedEvent.CorrelationId}  time : {DateTime.Now}");
+                    //    Console.Beep();
+                    //});
+                    //this.callAutomationClient.GetEventProcessor().AttachOngoingEventProcessor<PlayFailed>(answerCallResult.CallConnection.CallConnectionId, async (playFailedEvent) =>
+                    //{
+                    //    logger.LogInformation($"Play failed event received for CorrelationId id: {playFailedEvent.CorrelationId} time : {DateTime.Now}");
+                    //    var callConnectionMedia = answerCallResult.CallConnection.GetCallMedia();
+                    //    var resultInformation = playFailedEvent.ResultInformation;
+                    //    logger.LogError("Encountered error during play, message={msg}, code={code}, subCode={subCode}", resultInformation?.Message, resultInformation?.Code, resultInformation?.SubCode);
+                    //});
                 }
 
                 if (eventData is AcsRecordingFileStatusUpdatedEventData statusUpdated)
@@ -177,7 +170,8 @@ namespace incoming_call_recording.Controllers
 
         /* Route for Azure Communication Service eventgrid webhooks*/
         [HttpPost]
-        [Route("callbacks/{contextid}")]
+        [Route("callbacks")]
+        //[Route("callbacks/{contextid}")]
         public async Task<IActionResult> Handle([FromBody] CloudEvent[] cloudEvents)
         {
             var eventProcessor = this.callAutomationClient.GetEventProcessor();
@@ -186,9 +180,9 @@ namespace incoming_call_recording.Controllers
                 CallAutomationEventBase parsedEvent = CallAutomationEventParser.Parse(cloudEvent);
                 logger.LogInformation(
                     "Received call event: {type}, callConnectionID: {connId}, serverCallId: {serverId}, time: {datetime}",
-                    parsedEvent.GetType(),
-                    parsedEvent.CallConnectionId,
-                    parsedEvent.ServerCallId,
+                    parsedEvent?.GetType(),
+                    parsedEvent?.CallConnectionId,
+                    parsedEvent?.ServerCallId,
                     DateTime.Now);
 
 
@@ -198,6 +192,34 @@ namespace incoming_call_recording.Controllers
                     {
                         logger.LogInformation($"Received recording state event time: {recordingStateChanged.State.ToString()}");
                     }
+                }
+                else if (parsedEvent is CallConnected callConnected)
+                {
+                    logger.LogInformation($"Received CallConnected event ");
+
+                    var acsTarget = new CommunicationUserIdentifier(acsTargetUser);
+                    CallInvite callInvite = new CallInvite(acsTarget);
+
+                    var addParticipantOptions = new AddParticipantOptions(callInvite)
+                    {
+                        InvitationTimeoutInSeconds = 30
+                    };
+                    var addParticipantResult = await callAutomationClient.GetCallConnection(parsedEvent.CallConnectionId).AddParticipantAsync(addParticipantOptions);
+                    logger.LogInformation($"Adding Participant to the call: {addParticipantResult.Value?.InvitationId}");
+                }
+                else if (parsedEvent is AddParticipantSucceeded addParticipantSucceeded)
+                {
+                    logger.LogInformation($"Received AddParticipantSucceeded event ");
+                    var response = await callAutomationClient.GetCallConnection(parsedEvent.CallConnectionId).GetParticipantsAsync();
+                    var participantCount = response.Value.Count;
+                    var participantList = response.Value;
+
+                    logger.LogInformation($"Total participants in call: {participantCount}");
+                    logger.LogInformation($"Participants: {JsonSerializer.Serialize(participantList)}");
+                }
+                else if (parsedEvent is AddParticipantFailed addParticipantFailed)
+                {
+                    logger.LogInformation($"Received AddParticipantFailed event ");
                 }
             }
 
