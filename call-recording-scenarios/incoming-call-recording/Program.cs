@@ -40,6 +40,7 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseWebSockets();
 app.Use(async (context, next) =>
 {
+    Console.WriteLine($"Context request path: {context.Request.Path}");
     if (context.Request.Path == "/ws")
     {
         if (context.WebSockets.IsWebSocketRequest)

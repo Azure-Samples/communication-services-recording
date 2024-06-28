@@ -1,7 +1,9 @@
-﻿using System.Net.WebSockets;
-using System.Net;
+﻿using Microsoft.VisualBasic;
+using NAudio.Wave;
+using System.Net.WebSockets;
 using System.Text;
-using Newtonsoft.Json;
+using System.Text.Json;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace incoming_call_recording.Helpers
 {
@@ -14,16 +16,18 @@ namespace incoming_call_recording.Helpers
         public static async Task ProcessRequest(WebSocket webSocket)
         {
             Dictionary<string, FileStream> audioDataFiles = new Dictionary<string, FileStream>();
+            WebSocketReceiveResult? receiveResult = null;
 
             try
             {
                 string partialData = "";
+                MemoryStream stream = new MemoryStream();
 
                 while (webSocket.State == WebSocketState.Open || webSocket.State == WebSocketState.CloseSent)
                 {
                     byte[] receiveBuffer = new byte[2048];
                     var cancellationToken = new CancellationTokenSource(TimeSpan.FromSeconds(60)).Token;
-                    WebSocketReceiveResult receiveResult = await webSocket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), cancellationToken);
+                    receiveResult = await webSocket.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), cancellationToken);
 
                     if (receiveResult.MessageType != WebSocketMessageType.Close)
                     {
@@ -38,27 +42,38 @@ namespace incoming_call_recording.Helpers
 
                                 if (data != null)
                                 {
-                                    AudioDataPackets jsonData = JsonConvert.DeserializeObject<AudioDataPackets>(data);
+                                    //AudioDataPackets jsonData = JsonConvert.DeserializeObject<AudioDataPackets>(data);
+
+                                    var jsonData = JsonSerializer.Deserialize<AudioDataPackets>(data,
+                                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
                                     if (jsonData != null && jsonData.kind == "AudioData")
                                     {
-                                        // byte[] byteArray = jsonData?.audioData?.data;
+                                        //// byte[] byteArray = jsonData?.audioData?.data;
                                         byte[] bytes = System.Convert.FromBase64String(jsonData?.audioData?.data);
-                                        // File.WriteAllBytes(fileName, bytes);
-                                        // string fileName = string.Format("..//{0}.wav", jsonData?.audioData?.participantRawID).Replace(":", "");
-                                        string fileName = string.Format("..//{0}.pcm", jsonData?.audioData?.participantRawID).Replace(":", "");
-                                        FileStream audioDataFileStream;
+                                        //// File.WriteAllBytes(fileName, bytes);
+                                        ////string fileName = string.Format("..//{0}.wav", jsonData?.audioData?.participantRawID).Replace(":", "");
+                                        //string fileName = string.Format("..//{0}.pcm", jsonData?.audioData?.participantRawID).Replace(":", "");
+                                        //FileStream audioDataFileStream;
 
-                                        if (audioDataFiles.ContainsKey(fileName))
-                                        {
-                                            audioDataFiles.TryGetValue(fileName, out audioDataFileStream);
-                                        }
-                                        else
-                                        {
-                                            audioDataFileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.None);
-                                            audioDataFiles.Add(fileName, audioDataFileStream);
-                                        }
-                                        await audioDataFileStream.WriteAsync(bytes, 0, bytes.Length);
+                                        //if (audioDataFiles.ContainsKey(fileName))
+                                        //{
+                                        //    audioDataFiles.TryGetValue(fileName, out audioDataFileStream);
+                                        //}
+                                        //else
+                                        //{
+                                        //    audioDataFileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.None);
+                                        //    audioDataFiles.Add(fileName, audioDataFileStream);
+                                        //}
+                                        //await audioDataFileStream.WriteAsync(bytes, 0, bytes.Length);
+
+                                        string fileName = jsonData?.audioData?.participantRawID == null? "test.wav": string.Format("..//{0}.wav", jsonData?.audioData?.participantRawID).Replace(":", "");
+                                        string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+                                        stream.Write(bytes, 0, bytes.Length);
+                                        stream.Seek(0, SeekOrigin.Begin);
+                                        var wavStream = new RawSourceWaveStream(stream, new WaveFormat(16000, 1));
+                                        WaveFileWriter.CreateWaveFile($"{downloadsPath}/{fileName}", wavStream);
+
                                     }
                                     Console.WriteLine(data);
                                 }

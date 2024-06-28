@@ -1,6 +1,4 @@
-﻿using Azure.Communication.CallAutomation;
-
-namespace incoming_call_recording.Helpers
+﻿namespace incoming_call_recording.Helpers
 {
     internal class AudioDataPackets
     {
@@ -15,4 +13,5 @@ namespace incoming_call_recording.Helpers
         public string participantRawID { set; get; }
         public bool silent { set; get; } // Indicates if the received audio buffer contains only silence.
     }
+
 }

@@ -25,16 +25,6 @@ This project framework provides the following features:
 
 Before running this sample, you'll need to setup the resources above with the following configuration updates:
 
-##### 1. Setup and host your Azure DevTunnel
-
-[Azure DevTunnels](https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/overview) is an Azure service that enables you to share local web services hosted on the internet. Use the commands below to connect your local development environment to the public internet. This creates a tunnel with a persistent endpoint URL and which allows anonymous access. We will then use this endpoint to notify your application of calling events from the ACS Call Automation service.
-
-```bash
-devtunnel create --allow-anonymous
-devtunnel port create -p 7051
-devtunnel host
-```
-
 ##### 2. Add a Managed Identity to the ACS Resource that connects to the Cognitive Services resource
 Follow the instructions in this [documentation](https://learn.microsoft.com/en-us/azure/communication-services/concepts/call-automation/azure-communication-services-azure-cognitive-services-integration).
 
